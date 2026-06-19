@@ -59,16 +59,21 @@ Default: derive the style profile from their own articles. Or: point at 2–3 "g
 match, or use the neutral house template.
 
 **Checkpoint 4 — Audit deliverables** *(default = all)*
-dashboard, xlsx tracker, exec summary. These are the diagnostic; they always run. **Rewrites are a
-separate, opt-in step — do NOT auto-rewrite.**
+dashboard, xlsx tracker, exec summary. These are the diagnostic; they always run (build them, but don't
+open/present the dashboard yet). **By default the priority rewrites then run automatically (Checkpoint 5)
+and the dashboard is opened with them baked in** — only skip the rewrites if the user has said not to.
 
-**Checkpoint 5 — Rewrites (ask AFTER showing the grades, never before).**
-First ask *whether and which*:
- - Rewrite the worst / priority articles (recommend a number, e.g. the bottom 5–10 by grade)
+**Checkpoint 5 — Rewrites (default = yes; do the priority set first, don't wait to be asked).**
+The default flow is: **rewrite the priority set right after the audit, then open the dashboard with the
+rewrites baked in, then continue** (next batches, coherence merges, the monthly loop). Don't stop to ask
+permission first — just do the bottom 5–10 by grade/priority and state the batch you picked. The user can
+always redirect ("pick these instead", "not now", "bigger batch"). Surface the *which* options explicitly
+only when scope is genuinely ambiguous:
+ - Rewrite the worst / priority articles (**default** — recommend the batch, e.g. bottom 5–10 by grade)
  - Let me pick specific articles (show the graded list and let them choose)
  - Not now (just keep the audit)
-Then, if they want rewrites, ask *how to deliver*:
- - A **Markdown rewrite pack** they paste in themselves (`rewrite_pack.md`) — default, works everywhere
+For *how to deliver*, default to the Markdown pack unless the user asks to push:
+ - A **Markdown rewrite pack** they paste in themselves (`rewrite_pack.md`) — **default**, works everywhere
  - **Push straight into the help center as drafts via API** — Zendesk / Intercom / Freshdesk / HubSpot
    (Gorgias = pack only). See `reference/writeback.md`. Always create as **drafts**, never publish; confirm
    the count and platform before writing anything.
@@ -95,10 +100,17 @@ Offer a scheduled monthly re-audit so the grade is tracked over time, not a one-
    13-check scoring + the help-centre-wide coherence layer (coverage gaps, contradictions, near-duplicates,
    date analysis, disambiguation) + the house-style profile. To unlock coverage gaps, pass the ticket
    export from Checkpoint 2: `--tickets export.csv` (otherwise the coverage panel renders a locked nudge).
-3. **Confirm + deep-audit the priority set** — for the top-ranked articles, confirm the judgement-
-   call checks (answer-first, plain headings, jargon, cases-together) **and the corpus candidates
-   marked `needs_confirm`** (contradiction / near-duplicate / disambiguation) with the prompts in
-   `reference/patterns.md`. Drop any candidate the confirm rejects before it counts against the grade.
+3. **Confirm + deep-audit the priority set, and review the whole coherence layer** — for the top-ranked
+   articles, confirm the judgement-call checks (answer-first, plain headings, jargon, cases-together).
+   Then **review EVERY contradiction ("articles that disagree") and EVERY near-duplicate ("articles that
+   agree") candidate yourself before any of them are shown** — not only the ones flagged `needs_confirm`.
+   The heuristics are deliberately broad and over-flag (two articles that merely share the topic
+   "payment"; a base name vs a "`<name>` 2" artefact). Judge each with the confirm prompts in
+   `reference/patterns.md` and **drop every candidate that's an overly-conservative false positive** — a
+   pair only stays if a real customer's question would genuinely be hurt by the conflict / overlap. Apply
+   the drop for real: delete the rejected items from `results.json → corpus` (`contradictions` /
+   `collisions` / `disambiguation`) and revert any folded check **before building the deliverables**, so
+   the dashboard only ever surfaces findings that survived the review.
 4. **Build the audit deliverables** — run BOTH:
    - `scripts/build_outputs.py results.json --kb-name "<KB>" --outdir out/` for `exec_summary.md` and
      `audit_tracker.xlsx`.
@@ -107,7 +119,8 @@ Offer a scheduled monthly re-audit so the grade is tracked over time, not a one-
      first" list with issue chips + collapsed house-style panel) and `scorecard.html` (cream card, big
      grade block). `build_branded.py` copies the brand assets (`scripts/assets/`) into `out/assets/`,
      so keep that folder alongside the HTML when sharing. All generated UI is **US English**.
-   Present these, then **stop and ask Checkpoint 5** — don't rewrite yet.
+   Build these now, but **don't open or present the dashboard yet** — by default go straight to the
+   priority rewrites (step 5), rebuild the dashboard with them baked in, and open *that* version.
 5. **Rewrite — only the articles they asked for, and produce the FINISHED article every time.** Apply
    the rewrite prompt (`reference/patterns.md`), injecting `results.json → style_profile.descriptor`
    (and the richer `style_profile.signals` / `style_profile.highlights` for finer voice-matching)
@@ -163,7 +176,12 @@ Offer a scheduled monthly re-audit so the grade is tracked over time, not a one-
      (dry-run by default; `--list` shows the section/collection/folder/category ids; add `--execute`
      to write). **Gorgias has no write API → Markdown pack only.** Confirm platform + count first;
      never publish; report back the draft links. Full per-platform endpoints in `reference/writeback.md`.
-6. **Loop** — offer a scheduled monthly re-audit so the grade is tracked over time.
+6. **Open the dashboard, then continue the flow** — once the priority batch is fact-checked, **open the
+   dashboard** (`open out/dashboard.html` on macOS, `xdg-open out/dashboard.html` on Linux) so the user
+   lands on the rewrites, present the before→after, then keep going through the remaining steps without
+   waiting to be prompted: offer the next worst-N batch, the near-duplicate **merges** that survived the
+   coherence review, unlocking coverage gaps with a ticket CSV, and a scheduled **monthly re-audit** so
+   the grade is tracked over time.
 
 ## Stage gates — what "done" looks like (don't pass over a stage until it's true)
 Treat every stage as **gated**: verify its done-criterion before moving on, and say so out loud. A
@@ -174,7 +192,8 @@ even when running by hand; nothing should be casually skipped.)
 |---|---|
 | **Fetch** | Every article pulled in **one language** (no other locales), each cropped to its article body. Spot-check: URLs all share the locale, median body > ~50 words, **no nav/header markup** in any body. |
 | **Audit** | `results.json` has one row per fetched article, an overall grade, and all 13 checks rolled up (`article_count` matches the corpus). |
-| **Deliverables** | branded `dashboard.html`, `scorecard.html`, `audit_tracker.xlsx`, `exec_summary.md` all exist and open. **Present them before asking about rewrites.** |
+| **Coherence review** | Every contradiction & near-duplicate candidate reviewed; overly-conservative false positives **deleted from `results.json → corpus`** (and their folded checks reverted) before the dashboard is built. |
+| **Deliverables** | branded `dashboard.html`, `scorecard.html`, `audit_tracker.xlsx`, `exec_summary.md` all exist and open. The dashboard is **opened for the user after the default priority rewrites are baked in**, so it shows the rewrite pages. |
 | **Rewrites** | Each rewrite uses **only source facts**; `body` contains **no `[VERIFY]` text**; every source image/video carried over; before→after grade recorded. |
 | **Fact-check** | `verify_rewrites.py` reports **0 flags** — every measurement / quoted string traces to the source. Resolve every flag before presenting. |
 | **Grade integrity** | Every flagged check is **either genuinely fixed or listed in `resolved_notes` with a reason** — nothing silently dropped; `raw_grade` keeps the unadjusted score. |

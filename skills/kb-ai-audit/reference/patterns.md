@@ -48,12 +48,19 @@ affects the grade** (the answer to "but the article looked fine on its own"):
 Coverage gaps need a ticket export: run `kb_audit.py articles.json --tickets export.csv`. Without it the
 dashboard shows a **locked** panel that doubles as a nudge to upload tickets. Reuse the Checkpoint 2 CSV.
 
-Contradiction, collision and disambiguation findings are deterministic **candidates** carrying
-`needs_confirm: true`. On the priority set, confirm them before leaning on them (they fold into the grade,
-so a false positive costs an article a check). Use the confirm prompts below; if a candidate is wrong,
-drop it from `corpus` and revert the folded check to its prior verdict. In the branded dashboard each
-contradiction/near-duplicate carries a **Merge / Reconcile** button that hands Claude the resolution
-instruction (merge into one canonical article / reconcile both to agree), using only source facts.
+Contradiction, collision and disambiguation findings are deterministic **candidates** — the heuristics
+are intentionally broad and **over-flag**, so treat them as a shortlist to review, not findings to trust.
+**Always review every contradiction ("disagree") and near-duplicate ("agree") candidate before any of
+them are shown** — not only the ones marked `needs_confirm`, and regardless of whether they're on the
+priority set — because they fold into the grade and a false positive costs an article a check. Use the
+confirm prompts below and **drop every overly-conservative false positive**: a candidate only survives if
+a real customer question would genuinely be hurt by the conflict / overlap (two articles that merely share
+a topic word, or a base name vs a "`<name>` 2" detector artefact, do **not** survive). Delete each
+rejected item from `results.json → corpus` (`contradictions` / `collisions` / `disambiguation`) and revert
+the folded check to its prior verdict **before building the deliverables**, so the dashboard only surfaces
+what survived. In the branded dashboard each surviving contradiction/near-duplicate carries a
+**Merge / Reconcile** button that hands Claude the resolution instruction (merge into one canonical
+article / reconcile both to agree), using only source facts.
 
 ### Corpus confirm prompts (run on candidates before relying on them)
 > **Contradiction** — Do these two passages state genuinely conflicting facts about the same thing a
