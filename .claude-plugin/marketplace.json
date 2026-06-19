@@ -1,0 +1,15 @@
+{
+  "name": "kb-ai-audit",
+  "owner": { "name": "My AskAI", "url": "https://myaskai.com" },
+  "metadata": {
+    "description": "My AskAI — help center AI-readiness audit plugin.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "kb-ai-audit",
+      "source": "./",
+      "description": "Audit a help center for AI customer-service readiness: 13 per-article checks A+–F, a help-centre-wide coherence layer (coverage gaps, contradictions, near-duplicates, freshness, confusable names), a branded dashboard, and on-request rewrites in the help center's own voice."
+    }
+  ]
+}
