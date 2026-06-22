@@ -820,8 +820,8 @@ def build_report():
       <div style="font-family:var(--font-display);font-weight:700;font-size:30px;line-height:1.05;letter-spacing:-.02em;margin:16px 0 8px;max-width:18ch;position:relative">
         Fix it once &mdash; then keep it that way, <span class="serif" style="color:var(--red);font-size:34px">automatically</span>.</div>
       <p style="font:300 14px/1.6 var(--font-body);color:rgba(251,248,243,.82);max-width:56ch;margin:0;position:relative">
-        My AskAI turns your help center into an AI support agent that resolves tickets &mdash; and flags articles as they drift
-        out of AI-readiness, so a grade like this never creeps back. Every fix in this report works with any AI agent or helpdesk.</p>
+        My AskAI turns your help center into an AI support agent that resolves tickets &mdash; and learns automatically
+        from your human agent replies to continuously improve responses. Every fix in this report works with any AI agent or helpdesk.</p>
       <a class="btn" href="https://myaskai.com">Create your AI agent &rarr;</a>
       <span style="margin-left:14px;font:600 13px var(--font-ui);color:rgba(251,248,243,.7);position:relative">myaskai.com</span>
     </div>
