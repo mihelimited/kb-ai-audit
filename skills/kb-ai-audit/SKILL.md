@@ -59,9 +59,11 @@ Default: derive the style profile from their own articles. Or: point at 2–3 "g
 match, or use the neutral house template.
 
 **Checkpoint 4 — Audit deliverables** *(default = all)*
-dashboard, xlsx tracker, exec summary. These are the diagnostic; they always run (build them, but don't
-open/present the dashboard yet). **By default the priority rewrites then run automatically (Checkpoint 5)
-and the dashboard is opened with them baked in** — only skip the rewrites if the user has said not to.
+dashboard, xlsx tracker, exec summary, and a branded **PDF report** (the full audit, no rewrites). These
+are the diagnostic; they always run (build them, but don't open/present the dashboard yet). **By default
+the priority rewrites then run automatically (Checkpoint 5) and the dashboard is opened with them baked
+in** — only skip the rewrites if the user has said not to. The PDF report is rendered and handed back as
+an asset at the end of the run (step 7), regardless of whether rewrites were done.
 
 **Checkpoint 5 — Rewrites (default = yes; do the priority set first, don't wait to be asked).**
 The default flow is: **rewrite the priority set right after the audit, then open the dashboard with the
@@ -116,9 +118,12 @@ Offer a scheduled monthly re-audit so the grade is tracked over time, not a one-
      `audit_tracker.xlsx`.
    - `scripts/build_branded.py results.json --kb-name "<KB>" --outdir out/` for the **My AskAI–branded**
      `dashboard.html` (hero grade card + by-question score cards + filterable **row-card** "Fix these
-     first" list with issue chips + collapsed house-style panel) and `scorecard.html` (cream card, big
-     grade block). `build_branded.py` copies the brand assets (`scripts/assets/`) into `out/assets/`,
-     so keep that folder alongside the HTML when sharing. All generated UI is **US English**.
+     first" list with issue chips + collapsed house-style panel), `scorecard.html` (cream card, big
+     grade block), and `report.html` — a **print-optimized, self-contained, audit-only** report styled as a
+     lead magnet on the myaskai.com look (cream canvas, speech-bubble motif, kicker pills, serif-italic
+     accents): magazine cover → "what an AI agent can't do" → by-question scores → top-12 fix-these-first
+     → coherence → house style → dark CTA; **no rewrites**. It becomes the PDF in step 7. `build_branded.py` copies the brand assets (`scripts/assets/`) into
+     `out/assets/`, so keep that folder alongside the HTML when sharing. All generated UI is **US English**.
    Build these now, but **don't open or present the dashboard yet** — by default go straight to the
    priority rewrites (step 5), rebuild the dashboard with them baked in, and open *that* version.
 5. **Rewrite — only the articles they asked for, and produce the FINISHED article every time.** Apply
@@ -182,6 +187,16 @@ Offer a scheduled monthly re-audit so the grade is tracked over time, not a one-
    waiting to be prompted: offer the next worst-N batch, the near-duplicate **merges** that survived the
    coherence review, unlocking coverage gaps with a ticket CSV, and a scheduled **monthly re-audit** so
    the grade is tracked over time.
+7. **Render the branded PDF report and hand it back as an asset (always, on completion).** Once the run
+   is complete — after the audit, and after any rewrites/fact-check — turn the audit-only `report.html`
+   into a PDF and surface it to the user as a downloadable asset:
+   `scripts/html_to_pdf.py out/report.html out/report.pdf`. The script renders with whatever engine is
+   available (Playwright → headless Chrome/Chromium/Edge → WeasyPrint) and honours the report's A4
+   `@page` CSS, so the PDF matches the brand. The PDF is the **diagnostic only — it never includes the
+   help-center rewrites** (those live in the rewrite pages / Markdown pack). Present `out/report.pdf` as
+   an attached asset **and** give a clickable absolute-path link to it. If no PDF engine is available,
+   the script says so and leaves `report.html` — fall back to the host's print-to-PDF (e.g. open
+   `report.html` and Print → Save as PDF) before handing it over; never skip delivering the report.
 
 ## Stage gates — what "done" looks like (don't pass over a stage until it's true)
 Treat every stage as **gated**: verify its done-criterion before moving on, and say so out loud. A
@@ -193,11 +208,12 @@ even when running by hand; nothing should be casually skipped.)
 | **Fetch** | Every article pulled in **one language** (no other locales), each cropped to its article body. Spot-check: URLs all share the locale, median body > ~50 words, **no nav/header markup** in any body. |
 | **Audit** | `results.json` has one row per fetched article, an overall grade, and all 13 checks rolled up (`article_count` matches the corpus). |
 | **Coherence review** | Every contradiction & near-duplicate candidate reviewed; overly-conservative false positives **deleted from `results.json → corpus`** (and their folded checks reverted) before the dashboard is built. |
-| **Deliverables** | branded `dashboard.html`, `scorecard.html`, `audit_tracker.xlsx`, `exec_summary.md` all exist and open. The dashboard is **opened for the user after the default priority rewrites are baked in**, so it shows the rewrite pages. |
+| **Deliverables** | branded `dashboard.html`, `scorecard.html`, `report.html`, `audit_tracker.xlsx`, `exec_summary.md` all exist and open. The dashboard is **opened for the user after the default priority rewrites are baked in**, so it shows the rewrite pages. |
 | **Rewrites** | Each rewrite uses **only source facts**; `body` contains **no `[VERIFY]` text**; every source image/video carried over; before→after grade recorded. |
 | **Fact-check** | `verify_rewrites.py` reports **0 flags** — every measurement / quoted string traces to the source. Resolve every flag before presenting. |
 | **Grade integrity** | Every flagged check is **either genuinely fixed or listed in `resolved_notes` with a reason** — nothing silently dropped; `raw_grade` keeps the unadjusted score. |
 | **Render** | Each `rewrite-NN.html` has the two **collapsed** panels **above** the article and **outside** the copy region; `[VERIFY]` lives only in the verify checklist, never in the copied body. |
+| **Report (PDF)** | `report.pdf` exists (rendered from `report.html`), is **branded and audit-only — no rewrites**, and is **handed back to the user as an attached asset with a clickable link**. If no PDF engine ran, the report was print-to-PDF'd by hand and still delivered — never skipped. |
 
 ## Running it / scale
 - **All articles, one command:** `fetch_articles.py` pulls the whole help centre (tested against a 125-article
@@ -210,10 +226,11 @@ even when running by hand; nothing should be casually skipped.)
   batches (e.g. 10 at a time, worst first), but always deliver the *complete* rewrite for each.
 
 ## Output contract
-The three HTML surfaces are emitted by `build_branded.py` in the **My AskAI brand system** (orange
-`#EA3609`, Geist + Acid-Grotesk display type, fully-rounded pills, white background, the myAskAI
-wordmark). All copy is **US English** ("help center"). Brand assets live in `scripts/assets/` and are
-copied to `out/assets/` — ship that folder with the HTML.
+The HTML surfaces (dashboard, scorecard, **report**, per-article rewrite pages) are emitted by
+`build_branded.py` in the **My AskAI brand system** (orange `#EA3609`, Geist + Acid-Grotesk display
+type, fully-rounded pills, white background, the myAskAI wordmark). All copy is **US English** ("help
+center"). Brand assets live in `scripts/assets/` and are copied to `out/assets/` — ship that folder with
+the HTML. (`report.html` inlines the wordmark, so it and `report.pdf` stand alone without `out/assets/`.)
 - **dashboard.html** — the hub: a top bar (open scorecard / copy score summary), a **hero** (left grade
   card with the big letter grade + "% of checks pass"; right headline + explainer + stat chips), a
   **by-question** section (three cards, one per find/use/trust question, each with per-check pass-% bars
@@ -231,6 +248,16 @@ copied to `out/assets/` — ship that folder with the HTML.
 - **scorecard.html** — a self-contained, share-ready card (1200×630): cream card, a solid grade block
   (orange F/D, amber C, green A/B) with the big letter, overall %, articles audited / worth fixing, and
   the three biggest gaps as bars. Screenshot or open to share.
+- **report.html → report.pdf** — the **branded, print-optimized, audit-only report** (no rewrites),
+  designed as a **lead magnet** in the myaskai.com look (cream canvas `#FAF9F1`, orange speech-bubble
+  decorations, kicker pills, Instrument-Serif italic accents, dark CTA), and the deliverable handed back
+  as an asset on completion. Paginated A4 (`@page` CSS): a magazine **cover** (grade band + serif-accent
+  title), a "what an AI agent can't do" callout, the by-question scores, the **top-12** "Fix these first"
+  articles (with "+N more — see the tracker" notes), the **Knowledge base coherence** section (button-free
+  single-column static panels + freshness graph, long lists capped), the house-style summary, and a
+  dark **CTA** outro. Full-bleed cream to the page edge (`@page` margin 0 + `box-decoration-break:clone`
+  for a consistent inner border on every page); self-contained (wordmark inlined). `html_to_pdf.py` converts it to `report.pdf` via
+  Playwright / headless Chrome / WeasyPrint.
 - **rewrite-NN-&lt;slug&gt;.html** (one per rewrite) — a self-contained page: display-type H1, a
   before→after grade pair (orange-tint → green-tint badges), source link, **Copy article** button
   (copies title + body as rich HTML *and* plain text), the full article (text + carried-over images and
@@ -258,9 +285,15 @@ copied to `out/assets/` — ship that folder with the HTML.
 
 ## Notes
 - `kb_audit.py`, `build_outputs.py`, `build_branded.py` and `verify_rewrites.py` are stdlib + openpyxl,
-  no network, safe to run anywhere. `push_drafts.py` (Zendesk/Intercom/Freshdesk/HubSpot) and the
-  `push_to_intercom.py` wrapper are the only scripts that write externally — dry-run by default, drafts
-  only, credentials from env vars (see `reference/writeback.md`).
+  no network, safe to run anywhere. `build_branded.py` now also emits `report.html` (audit-only,
+  print-ready). `push_drafts.py` (Zendesk/Intercom/Freshdesk/HubSpot) and the `push_to_intercom.py`
+  wrapper are the only scripts that write externally — dry-run by default, drafts only, credentials from
+  env vars (see `reference/writeback.md`).
+- `html_to_pdf.py` (`report.html` → `report.pdf`) is stdlib orchestration; the rendering engine is
+  optional and tried in order **Playwright → headless Chrome/Chromium/Edge/Brave → WeasyPrint**. It needs
+  one of them present (Claude Code on the user's machine almost always has a Chrome install). If none are
+  found it leaves `report.html` with a clear message; fall back to the host's print-to-PDF and still
+  deliver the report.
 - Fetching must use the host's web tools; for very large fetches, page and append to `articles.json`.
 - See `demo/` in the repo for a full worked run against Bird Buddy's Zendesk help center (125
   articles → grade F): `demo/output/` has the dashboard, shareable `scorecard.html`, the 13

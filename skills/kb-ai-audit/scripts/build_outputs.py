@@ -179,8 +179,13 @@ def exec_summary(d, kb):
              f"{sp['faq_pattern_pct']}% step-by-step/FAQ · {sp['heading_case']} headings.\n")
     L.append("The audit scores structure objectively; rewrites keep this voice. Clearer articles help "
              "your human readers too — the AI just makes it non-negotiable.\n")
-    L.append("---\n*Every fix here works with any AI agent or helpdesk. Keeping a help centre AI-ready "
-             "over time is what [My AskAI](https://myaskai.com) does automatically.*\n")
+    L.append("---\n")
+    L.append("## About My AskAI\n")
+    L.append("My AskAI turns your help center into an AI support agent that resolves customer tickets "
+             "automatically — and keeps every article AI-ready over time, flagging them as they drift so "
+             "a grade like this never creeps back. Every fix in this report works with any AI agent or "
+             "helpdesk; My AskAI is how teams keep it that way without the manual upkeep. "
+             "[See how it works \u2192 myaskai.com](https://myaskai.com)\n")
     return "\n".join(L)
 
 # ---------------- xlsx ----------------

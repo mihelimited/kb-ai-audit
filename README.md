@@ -11,8 +11,8 @@ first, and — only if you ask — rewrites the articles you choose in your own 
    *Can the AI find the answer? Can it use it? Is it current?* Plus an overall help-centre grade.
 3. **Tells you what to fix first** — a priority (Very high → Very low) based on how busy the article
    is and how many issues it has.
-4. **Gives you four outputs:** a branded dashboard, a 1-page summary, a spreadsheet tracker, and —
-   on request — a rewrite pack.
+4. **Gives you branded outputs:** a live dashboard, a shareable **PDF report** (the full audit, no
+   rewrites), a 1-page summary, a spreadsheet tracker, and — on request — a rewrite pack.
 5. **Rewrites on request** — you choose which articles, and whether to get a Markdown pack to paste
    in or have them pushed back into your help centre as **drafts** via API.
 
@@ -26,7 +26,9 @@ internet access — Claude Code on your machine is the most reliable). Everythin
 ## What's inside
 - `skills/kb-ai-audit/SKILL.md` — the workflow.
 - `skills/kb-ai-audit/scripts/` — `fetch_articles.py` (all platforms), `kb_audit.py` (the 13-check
-  grading + duplicate-fact + house-style passes), `build_outputs.py` (dashboard / tracker / summary).
+  grading + duplicate-fact + house-style passes), `build_branded.py` (branded dashboard / scorecard /
+  PDF report HTML / rewrite pages), `build_outputs.py` (1-page summary + spreadsheet tracker),
+  `html_to_pdf.py` (renders the report HTML to PDF via Playwright / headless Chrome / WeasyPrint).
 - `skills/kb-ai-audit/reference/` — `fetch.md` (per-platform fetching), `patterns.md` (the 13 checks
   + rewrite prompts), `writeback.md` (pushing drafts back via API).
 

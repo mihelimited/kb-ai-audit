@@ -1,7 +1,7 @@
 {
   "name": "kb-ai-audit",
-  "version": "0.4.0",
-  "description": "Audit a help center for AI customer-service readiness. Pulls every article (Zendesk, Intercom, HubSpot, Gorgias, Freshdesk, or any other via crawl), grades each one A+ to F against 13 plain-language checks, adds a help-centre-wide coherence layer (coverage gaps, contradictions, near-duplicates, freshness, confusable names), shows what to fix first, and on request rewrites articles in the help center's own voice — as a Markdown pack or pushed back as drafts via API.",
+  "version": "0.5.0",
+  "description": "Audit a help center for AI customer-service readiness. Pulls every article (Zendesk, Intercom, HubSpot, Gorgias, Freshdesk, or any other via crawl), grades each one A+ to F against 13 plain-language checks, adds a help-centre-wide coherence layer (coverage gaps, contradictions, near-duplicates, freshness, confusable names), shows what to fix first, produces a branded PDF report, and on request rewrites articles in the help center's own voice — as a Markdown pack or pushed back as drafts via API.",
   "author": { "name": "My AskAI", "url": "https://myaskai.com" },
   "homepage": "https://myaskai.com",
   "keywords": ["help center", "knowledge base", "AI agent", "customer support", "audit", "deflection", "resolution rate", "zendesk", "intercom", "freshdesk", "gorgias", "hubspot"]
