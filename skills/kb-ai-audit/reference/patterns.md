@@ -24,16 +24,16 @@ Score each Pass / Fix / N/A. `scripts/kb_audit.py` pre-scores all 13 and attache
 
 ## Is it the right, current answer?
 11. **Says what it doesn't cover or isn't possible** — states limits and known issues plainly, so the AI doesn't invent a workaround.
-12. **Dated and current** — a "last verified" date; expired/old content flagged; versions labelled.
+12. **Dated and current** — a "last verified" date; expired/old content flagged; versions labeled.
 13. **No conflicting duplicates** — each fact lives in one article; others point to it.
 
-Checks 2, 4, 6, 7, 9 are judgement calls — the script flags them `llm_confirm: true` so they get a
+Checks 2, 4, 6, 7, 9 are judgment calls — the script flags them `llm_confirm: true` so they get a
 quick human/AI confirm on the priority articles. Each check also carries an importance weight (1–3)
 used only to order the "biggest wins" list.
 
 ## The corpus-wide coherence layer (looks across and between articles)
 
-The 13 checks above grade one article at a time. `kb_audit.py` also runs five **help-centre-wide**
+The 13 checks above grade one article at a time. `kb_audit.py` also runs five **help-center-wide**
 passes that catch what a per-article grade can't — and **fold each finding into an existing check so it
 affects the grade** (the answer to "but the article looked fine on its own"):
 
@@ -71,7 +71,7 @@ article / reconcile both to agree), using only source facts.
 > **Disambiguation** — Does this article use {names} as if the reader already knows the difference,
 > without distinguishing them? real/not-real + one sentence. [article text]
 
-## Confirm prompt (judgement-call checks, on the priority set)
+## Confirm prompt (judgment-call checks, on the priority set)
 > Confirm Pass or Fix for these checks on the article below, one sentence each: worded the way
 > customers ask; answer first and stands alone; explains acronyms; keeps every case in one place;
 > gives the actual fix. [article text]
@@ -87,7 +87,7 @@ article / reconcile both to agree), using only source facts.
 > one question per article (split if needed and write every resulting article in full); lead with
 > the answer; use the customer's words including any exact error message; add a top **Applies to:**
 > line as a plain bold paragraph (not a blockquote — blockquotes get mangled on paste into some
-> help-centre editors); write out every step that only exists in a screenshot or video AND carry over the original
+> help-center editors); write out every step that only exists in a screenshot or video AND carry over the original
 > images/videos so the article is paste-complete — place each source image as Markdown `![alt](https-url)`
 > and each video as its `<iframe>` embed at the right point (source media URLs are in
 > `results.json → results[i].media`; for a split, put each into the article it belongs to); spell out

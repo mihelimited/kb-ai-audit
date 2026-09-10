@@ -4,7 +4,7 @@ description: >
   Audit a help center / knowledge base for AI customer-service-agent readiness, then produce
   paste-ready rewrites. Use when the user gives a help center URL and wants to know why their AI
   agent's resolution rate is low, wants a "KB audit", "help center audit", "AI readiness check",
-  "optimise our knowledge base for AI", or names Zendesk / Intercom / Gorgias / Freshdesk / HubSpot
+  "optimize our knowledge base for AI", or names Zendesk / Intercom / Gorgias / Freshdesk / HubSpot
   and asks to review their articles. Pulls every article, grades each one A+ to F against
   13 plain-language checks, derives the house style, and writes rewrites that keep that voice.
 ---
@@ -17,7 +17,7 @@ human who scrolls, skims and clicks "see also" is invisible to it. This skill fi
 **hands back the fixed articles**, not just a grade.
 
 Framework: 13 plain-language checks grouped under 3 questions (find / use / trust), **plus a
-help-centre-wide coherence layer** (coverage gaps, contradictions, near-duplicates, date analysis,
+help-center-wide coherence layer** (coverage gaps, contradictions, near-duplicates, date analysis,
 disambiguation) that looks across and between articles — see `reference/patterns.md`. The coherence
 findings fold into the existing checks so they affect the grade. Never expose the underlying mechanism
 in customer output with words like "retrieval", "RAG", "chunk", "embedding" or "cluster" — the ICP is a
@@ -98,25 +98,25 @@ Offer a scheduled monthly re-audit so the grade is tracked over time, not a one-
 
 ## Pipeline
 
-1. **Detect platform & fetch** — `scripts/fetch_articles.py <help-centre-url> -o articles.json`
-   auto-detects the platform and pulls the **entire** help centre into `articles.json`:
+1. **Detect platform & fetch** — `scripts/fetch_articles.py <help-center-url> -o articles.json`
+   auto-detects the platform and pulls the **entire** help center into `articles.json`:
    - **Zendesk** → public API, no login (fully automatic).
    - **Intercom / Freshdesk / HubSpot** → API if the matching token env var is set
      (`INTERCOM_TOKEN` / `FRESHDESK_KEY` / `HUBSPOT_TOKEN`), otherwise it crawls.
    - **Gorgias** → crawl (no public read API).
    - **Anything else / unknown** → crawl: find the sitemap, collect article URLs, crop each page to
      its real **article-body container** (not the first `<main>`, which is often the site header),
-     normalise.
+     normalize.
    The crawl filters to **one language by default** (`--locale en`) and de-dupes by article id, so a
    multilingual help center isn't graded N times. Verified per-platform fingerprints, sitemap paths,
    article-URL patterns and content selectors (Intercom / Freshdesk / HubSpot / Gorgias) are in
    `reference/fetch.md`. Override detection with `--platform`, language with `--locale`, sample with `--max`.
 2. **Triage every article** — run `scripts/kb_audit.py articles.json -o results.json`. Deterministic
-   13-check scoring + the help-centre-wide coherence layer (coverage gaps, contradictions, near-duplicates,
+   13-check scoring + the help-center-wide coherence layer (coverage gaps, contradictions, near-duplicates,
    date analysis, disambiguation) + the house-style profile. To unlock coverage gaps, pass the ticket
    export from Checkpoint 2: `--tickets export.csv` (otherwise the coverage panel renders a locked nudge).
 3. **Confirm + deep-audit the priority set, and review the whole coherence layer** — for the top-ranked
-   articles, confirm the judgement-call checks (answer-first, plain headings, jargon, cases-together).
+   articles, confirm the judgment-call checks (answer-first, plain headings, jargon, cases-together).
    Then **review EVERY contradiction ("articles that disagree") and EVERY near-duplicate ("articles that
    agree") candidate yourself before any of them are shown** — not only the ones flagged `needs_confirm`.
    The heuristics are deliberately broad and over-flag (two articles that merely share the topic
@@ -229,8 +229,8 @@ even when running by hand; nothing should be casually skipped.)
 | **Report (PDF)** | `report.pdf` exists (rendered from `report.html`), is **branded and audit-only — no rewrites**, and is **handed back to the user as an attached asset with a clickable link**. If no PDF engine ran, the report was print-to-PDF'd by hand and still delivered — never skipped. |
 
 ## Running it / scale
-- **All articles, one command:** `fetch_articles.py` pulls the whole help centre (tested against a 125-article
-  Zendesk help centre). The audit and rewrites then run over everything; the priority queue decides
+- **All articles, one command:** `fetch_articles.py` pulls the whole help center (tested against a 125-article
+  Zendesk help center). The audit and rewrites then run over everything; the priority queue decides
   order, not which articles get looked at.
 - **Where it runs:** anywhere the bundled scripts have normal network access — Claude Code on the
   user's machine is the most reliable for a full pull, but Cowork works too. Only the fetch step needs
@@ -247,7 +247,7 @@ the HTML. (`report.html` inlines the wordmark, so it and `report.pdf` stand alon
 - **dashboard.html** — the hub: a top bar (open scorecard / copy score summary), a **hero** (left grade
   card with the big letter grade + "% AI-readiness score"; right headline + explainer + stat chips), a
   **by-question** section (three cards, one per find/use/trust question, each with per-check pass-% bars
-  coloured by threshold), a **collapsed** "Your house style" panel (editable, saves to the browser,
+  colored by threshold), a **collapsed** "Your house style" panel (editable, saves to the browser,
   feeds Optimize), and the **"Fix these first"** list: search + grade/priority selects + "rewritten
   only", a live count, and one **row-card per article** — rank, grade badge, title link, priority,
   orange **issue chips** (the failing checks), `pass/total`, a **View rewrite →** pill if rewritten, and
@@ -278,7 +278,7 @@ the HTML. (`report.html` inlines the wordmark, so it and `report.pdf` stand alon
   (raw grade → resolved aspects with reasons → final grade) and *Verify before publishing* (the
   `[VERIFY]` checklist, with browser-persisted checkboxes) — both **outside** the copy region so neither
   is ever pasted. Has **← Back to audit** and **‹ Previous / Next ›**.
-- **audit_tracker.xlsx** — 13-check grid × every article, colour-coded, with a "Rewrite status"
+- **audit_tracker.xlsx** — 13-check grid × every article, color-coded, with a "Rewrite status"
   column they tick off. The thing they work down.
 - **rewrite_pack.md** — per priority article: before/after score, the **complete** paste-ready
   rewrite(s) in their style (full article text for every one, splits written out in full), what
@@ -308,6 +308,3 @@ the HTML. (`report.html` inlines the wordmark, so it and `report.pdf` stand alon
   found it leaves `report.html` with a clear message; fall back to the host's print-to-PDF and still
   deliver the report.
 - Fetching must use the host's web tools; for very large fetches, page and append to `articles.json`.
-- See `demo/` in the repo for a full worked run against Bird Buddy's Zendesk help center (125
-  articles → grade F): `demo/output/` has the dashboard, shareable `scorecard.html`, the 13
-  per-article rewrite pages, `rewrite_pack.md` and the `verify_report.md` fact-check.
