@@ -85,8 +85,6 @@ def extract_media(b):
     return out
 def sentences(t): return [s.strip() for s in re.split(r"(?<=[.!?])\s+",t) if s.strip()]
 
-# Ways a help center actually names its audience up front. (Previously this carried the demo
-# customer's own product names — "nature cam", "birdbuddy 2" — which no other customer can match.)
 # Audience tokens — the things a scope line actually names.
 _AUD=(r"(?:ios|android|iphone|ipad|desktop|mobile|web|browser|chrome|safari|firefox|edge|windows|macos|mac|linux|"
       r"free|pro|plus|team|business|starter|premium|enterprise|paid|trial|legacy|plan|tier|subscription|"
