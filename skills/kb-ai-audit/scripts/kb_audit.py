@@ -119,7 +119,13 @@ LIMIT_RE=re.compile(r"\b(not supported|isn'?t possible|is not possible|cannot|ca
 POLICY_RE=re.compile(r"\b(refund|billing|payment|invoice|subscription|cancel|plan|pricing|price|upgrade|downgrade|"
  r"policy|terms|privacy|data|delete|deletion|eligib|warrant|return|shipping|deliver|security|compliance)\b",re.I)
 CLICKHERE_RE=re.compile(r"\b(click here|tap here|see here|read here|consult this article|refer to (our|this|the)|see (our|this|the) .{0,30}(article|guide|page))\b",re.I)
-HIDDEN_RE=re.compile(r"(<details|class=\"[^\"]*(accordion|collaps|toggle|spoiler|tab-pane|tabs?-)|read more|show more|expand)",re.I)
+# "read more" / "show more" / "expand" only count as hidden content when they are an actual
+# CONTROL — the entire label of a link or button — not when they are ordinary English. Matching
+# them as bare substrings flagged "Expand that boundary after the replies meet your target" and
+# "Read more of our case studies" as accordions in articles that contain no accordion at all.
+HIDDEN_RE=re.compile(r"(<details|<summary|aria-expanded|data-(?:accordion|collapse|toggle)"
+ r"|class=\"[^\"]*(accordion|collaps|toggle|spoiler|tab-pane|tabs?-)"
+ r"|>\s*(?:read|show|see)\s+more\s*[<.!]|>\s*expand\s*[<.!])",re.I)
 BAREYN_RE=re.compile(r"<p[^>]*>\s*(<strong>)?\s*(A[:.]\s*)?(Yes|No)[.!]?\s*(</strong>)?\s*</p>",re.I)
 QWORD_RE=re.compile(r"\b(how do i|how to|how can|can i|what is|what are|where (is|do)|why (is|do|won'?t|can'?t)|when (will|does)|unable to|do i need|i can'?t)\b",re.I)
 PROBLEM_RE=re.compile(r"\b(error|issue|can'?t|cannot|unable|won'?t|not working|troubleshoot|fix|problem|fail|offline|why|stuck|won't connect|won't pair)\b",re.I)
