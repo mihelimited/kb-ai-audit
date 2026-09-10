@@ -100,6 +100,9 @@ Offer a scheduled monthly re-audit so the grade is tracked over time, not a one-
 
 1. **Detect platform & fetch** — `scripts/fetch_articles.py <help-center-url> -o articles.json`
    auto-detects the platform and pulls the **entire** help center into `articles.json`:
+   - **Any host with `/llms-full.txt`** → read that first. Mintlify / GitBook / Docusaurus publish
+     the whole site as clean markdown for machines, and it beats a crawl outright: modern docs
+     render article bodies client-side, so crawling them yields near-empty pages. `--no-llms` skips it.
    - **Zendesk** → public API, no login (fully automatic).
    - **Intercom / Freshdesk / HubSpot** → API if the matching token env var is set
      (`INTERCOM_TOKEN` / `FRESHDESK_KEY` / `HUBSPOT_TOKEN`), otherwise it crawls.
@@ -218,7 +221,7 @@ even when running by hand; nothing should be casually skipped.)
 
 | Stage | Done when (the gate) |
 |---|---|
-| **Fetch** | Every article pulled in **one language** (no other locales), each cropped to its article body. Spot-check: URLs all share the locale, median body > ~50 words, **no nav/header markup** in any body. |
+| **Fetch** | Every article pulled in **one language** (no other locales), each cropped to its article body. Spot-check: URLs all share the locale, median body > ~50 words, **no nav/header markup** in any body. If the fetch prints the **near-empty bodies** warning, stop and switch source (`/llms-full.txt`, platform API) — auditing empty articles silently corrupts the grade, and content the crawler can't read is also invisible to AI search crawlers. |
 | **Audit** | `results.json` has one row per fetched article, an overall grade, and all 13 checks rolled up (`article_count` matches the corpus). |
 | **Coherence review** | Every contradiction & near-duplicate candidate reviewed; overly-conservative false positives **deleted from `results.json → corpus`** (and their folded checks reverted) before the dashboard is built. |
 | **Deliverables** | branded `dashboard.html`, `scorecard.html`, `report.html`, `audit_tracker.xlsx`, `exec_summary.md` all exist and open. The dashboard is **opened for the user after the default priority rewrites are baked in**, so it shows the rewrite pages. |

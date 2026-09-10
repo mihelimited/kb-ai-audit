@@ -152,6 +152,33 @@ def updated_age_days(v):
     try: return (TODAY-datetime.date(int(m.group(1)),int(m.group(2)),int(m.group(3)))).days
     except ValueError: return None
 
+ANSWER_RE=re.compile(r"\b(you can|you'?ll|you need|to (do|start|claim|change|enable|cancel|charge|pair|reset|fix|connect|"
+ r"add|remove|update|create|delete|set|turn|check|find|use|install|upgrade|downgrade|contact)|"
+ r"tap|press|go to|click|select|yes|no|download|open|first|head to|navigate|email|there is|there are|"
+ r"we (do not|don'?t|can|cannot|can'?t) |it (is|isn'?t|does|doesn'?t) |\d)\b",re.I)
+PREAMBLE_RE=re.compile(r"^(at \w+|another year|we('re| are)? (happy|believe)|calling all|welcome|the \w+ app is|updating your)",re.I)
+
+def split_sections(b):
+    """The article as an AI agent meets it: each h2/h3 section, plus whatever precedes the first one.
+
+    The answer-first check used to judge a whole article by its opening 260 characters, so one
+    brand-copy intro condemned a page whose twelve sections each answered perfectly well — even
+    though the check exists precisely because 'the AI reads a section on its own'.
+    """
+    parts=re.split(r"(?i)<h[23][^>]*>.*?</h[23]>", b)
+    heads=[strip_tags(h) for h in re.findall(r"(?i)<h[23][^>]*>(.*?)</h[23]>", b)]
+    out=[]
+    for i,chunk in enumerate(parts):
+        if not chunk or not strip_tags(chunk).strip(): continue
+        out.append((heads[i-1] if 0<i<=len(heads) else "", chunk))
+    return out
+
+def leads_with_answer(chunk):
+    ps=get_paragraphs(chunk)
+    lead=(ps[0] if ps else strip_tags(chunk))[:260]
+    if not lead.strip(): return True                    # a pure list/table section leads with content
+    return bool(ANSWER_RE.search(lead))
+
 def first_block(b,n=260):
     ps=get_paragraphs(b); intro=ps[0] if ps else strip_tags(b); return intro[:n],intro
 
@@ -196,13 +223,20 @@ def check_article(a):
         res[CHK_SCOPE]=R("Pass" if scope else "Fix","Scope named near the top." if scope
                          else "Mentions a device/plan/region, but no 'who this is for' line near the top.")
 
-    # 4 Answer first + stands alone
-    answer=bool(re.search(r"\b(you can|to (do|start|claim|change|enable|cancel|charge|pair|reset|fix|connect)|tap|press|go to|click|select|yes|no|download|open|first|\d)\b",head80,re.I))
-    preamble=bool(re.search(r"^(at \w+|another year|we('re| are)? (happy|believe)|calling all|welcome|the \w+ app is|updating your)",intro.strip(),re.I)) or (not answer)
+    # 4 Answer first + stands alone — judged per SECTION, because that is the unit the AI reads
+    secs=split_sections(body) or [("",body)]
+    weak=[h for h,c in secs if not leads_with_answer(c)]
+    ok_ratio=1-(len(weak)/max(1,len(secs)))
+    brandy=bool(PREAMBLE_RE.search(intro.strip()))
     backref=bool(BACKREF_RE.search(text)); n4=[]
-    if preamble: n4.append("opens with intro/brand copy, not the answer")
+    if ok_ratio<0.6:
+        named=", ".join(f'"{h}"' for h in weak[:2] if h)
+        n4.append(f"{len(weak)} of {len(secs)} sections don't open with the answer"+(f" ({named})" if named else ""))
+    elif brandy:
+        n4.append("opens with intro/brand copy before the answer")
     if backref: n4.append("relies on 'as above'-style back-references")
-    res[CHK_FIRST]=R("Fix" if n4 else "Pass","; ".join(n4) if n4 else "Leads with the answer; sections stand alone.",llm=True)
+    res[CHK_FIRST]=R("Fix" if n4 else "Pass","; ".join(n4) if n4
+                     else f"{len(secs)-len(weak)} of {len(secs)} sections lead with the answer.",llm=True)
 
     # 5 Written out (not behind link/tab/click-here)
     n5=[]
