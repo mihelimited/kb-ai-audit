@@ -16,6 +16,7 @@ Score each Pass / Fix / N/A. `scripts/kb_audit.py` pre-scores all 13 and attache
 
 ## Can the AI use the answer?
 4. **Answer first, and each part stands alone** — the answer is in the opening lines of each section, and no section leans on "as mentioned above".
+   *Scored per section (h2/h3), not on the article's opening paragraph: an AI agent reads one section at a time, so a long page with a weak intro but strong sections should pass. Fails when under 60% of sections lead with the answer; the note names the offending sections.*
 5. **Answer written out, not behind a link or tab** — no bare Yes/No, no "click here", and nothing essential hidden in a drop-down, accordion or "read more".
 6. **Explains acronyms and product names** — every acronym / in-house name spelled out on first use, in every article.
 7. **Keeps every case in one place** — branches (EU/US, device A/B, Free/Pro) answered where the customer is, not cross-linked away.

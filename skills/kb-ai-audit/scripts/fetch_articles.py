@@ -10,6 +10,7 @@ route available:
   Freshdesk  -> Solutions API if FRESHDESK_KEY is set, else crawl
   HubSpot    -> Knowledge Base API if HUBSPOT_TOKEN is set, else crawl
   Gorgias    -> crawl (no public article API)
+  any host   -> /llms-full.txt first when it carries real article bodies (cleanest source)
   unknown    -> crawl (sitemap -> article pages -> main content)
 
 Every article is normalized to the schema kb_audit.py expects:
@@ -20,11 +21,17 @@ Stdlib only. Needs normal network access (run in Claude Code or any local run).
   python3 fetch_articles.py https://support.mybirdbuddy.com -o articles.json
   python3 fetch_articles.py https://help.example.com --platform intercom --max 200
 """
-import json, re, sys, os, argparse, urllib.request, urllib.error, time, html
+import os, json, re, sys, argparse, urllib.request, urllib.error, time, html
 from urllib.parse import urlparse, urljoin
 from html.parser import HTMLParser
 
 UA={"User-Agent":"kb-ai-audit/0.2"}
+
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from build_outputs import md_to_html
+except Exception:
+    def md_to_html(t): return "<p>"+"</p><p>".join(x for x in (t or "").split("\n\n") if x.strip())+"</p>"
 
 def host_of(u):
     p=urlparse(u if "://" in u else "https://"+u); return f"{p.scheme}://{p.netloc}"
@@ -262,6 +269,35 @@ def _next_data_body(page):
 
 def _txt_len(h): return len(re.sub(r"<[^>]+>"," ",h or "").split())
 
+LLMS_SPLIT=re.compile(r"\n(?=# [^\n]+\nSource: https?://)")
+LLMS_HEAD=re.compile(r"# ([^\n]+)\nSource: (\S+)\n(.*)", re.S)
+def fetch_llms_txt(base, mx):
+    """Read /llms-full.txt — the docs site published as clean markdown, for machines.
+
+    Mintlify, GitBook, Docusaurus and others now ship this, and it beats crawling outright: modern
+    docs render article bodies in client-side payloads, so a crawl of this project's own help
+    center returned near-empty bodies for several pages while llms-full.txt had the full text.
+    Entries are "# Title / Source: <url> / body". Returns None when absent or unparseable.
+    """
+    for path in ("/llms-full.txt","/llms.txt"):
+        try: raw=get(base+path)
+        except Exception: continue
+        chunks=LLMS_SPLIT.split("\n"+raw)
+        arts=[]
+        for c in chunks:
+            m=LLMS_HEAD.match(c)
+            if not m: continue
+            title,url,md=m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
+            if not url.startswith(base): continue
+            arts.append(norm({"id":url.rstrip("/").split("/")[-1] or "root","title":title,
+                              "html_url":url,"body":md_to_html(md)},
+                             section_id="/".join(url.split("/")[3:-1])))
+        # a stub llms.txt is just a link index; only trust it when it carries real article bodies
+        if len(arts)>=3 and sum(len(re.sub(r"<[^>]+>"," ",a["body"]).split()) for a in arts)/len(arts)>=40:
+            print(f"  llms.txt: {len(arts)} article(s) from {path}")
+            return arts[: (mx or 100000)]
+    return None
+
 def discover_urls(base, mx, locale=None):
     """Find article URLs from the sitemap. Filters to a single language (so multilingual help
     centers aren't graded N times) and de-dupes by article id. Freshdesk's sitemap lives at
@@ -300,6 +336,22 @@ def discover_urls(base, mx, locale=None):
         seen.add(k); urls.append(u)
     return urls[: (mx or 100000)]
 
+def warn_if_js_rendered(arts):
+    """A crawl that yields near-empty bodies means the content is rendered client-side.
+
+    Worth saying out loud rather than quietly auditing empty articles: the same JavaScript that
+    hides the text from this crawler also hides it from GPTBot / Bingbot, so the pages may be
+    invisible to AI search as well as to this audit. Prefer /llms-full.txt or the platform API.
+    """
+    if not arts: return
+    wc=sorted(len(re.sub(r"<[^>]+>"," ",a.get("body") or "").split()) for a in arts)
+    med=wc[len(wc)//2]; thin=sum(1 for w in wc if w<20)
+    # even a handful matters: an empty body is still graded, so it silently corrupts the audit
+    if med<50 or thin>max(2,len(arts)*0.05):
+        print(f"  ! {thin}/{len(arts)} article(s) came back near-empty (median {med} words).")
+        print("    The content is likely rendered by JavaScript, so this crawl — and AI search")
+        print("    crawlers like GPTBot/Bingbot — cannot read it. Try /llms-full.txt or the platform API.")
+
 def fetch_generic(base, mx, label="crawl", locale=None):
     urls=discover_urls(base, mx, locale); out=[]
     if not urls:
@@ -332,6 +384,7 @@ def main():
     ap.add_argument("url"); ap.add_argument("-o","--out",default="articles.json")
     ap.add_argument("--platform",choices=["zendesk","intercom","freshdesk","hubspot","gorgias","unknown"])
     ap.add_argument("--locale",default="en-us"); ap.add_argument("--max",type=int,default=0)
+    ap.add_argument("--no-llms",action="store_true",help="skip /llms-full.txt and crawl instead")
     a=ap.parse_args()
     base=host_of(a.url); plat=a.platform or detect_platform(a.url)
     print(f"Platform: {plat}  ·  {base}")
@@ -342,8 +395,11 @@ def main():
     elif plat=="hubspot": arts=fetch_hubspot(base,a.max)
     if arts is None:  # token missing or gorgias/unknown
         if plat in ("intercom","freshdesk","hubspot"):
-            print(f"  No API token for {plat} (set the env var) — falling back to crawl.")
-        arts=fetch_generic(base,a.max,plat,a.locale)
+            print(f"  No API token for {plat} (set the env var) — trying llms.txt, then crawl.")
+        # /llms-full.txt beats a crawl wherever it exists: clean markdown, no JS rendering needed.
+        arts=None if a.no_llms else fetch_llms_txt(base,a.max)
+        if arts is None:
+            arts=fetch_generic(base,a.max,plat,a.locale); warn_if_js_rendered(arts)
     json.dump(arts, open(a.out,"w"), indent=2, default=str)
     print(f"Saved {len(arts)} articles -> {a.out}")
 
