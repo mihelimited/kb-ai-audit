@@ -535,23 +535,40 @@ def style_profile(arts,results):
     p["highlights"]=hl
     return p
 
-GRADE_TABLE=[(97,"A+"),(93,"A"),(90,"A-"),(87,"B+"),(83,"B"),(80,"B-"),(77,"C+"),(73,"C"),(70,"C-"),(67,"D+"),(63,"D"),(60,"D-")]
+# Grade bands. Deliberately NOT the US school curve (where <60% is an F): these checks are a
+# high bar that almost no help center is written against in the first place, so a US curve hands
+# nearly every customer an F on the first pass — which is both discouraging and inaccurate. A KB
+# passing half the checks is doing an ordinary, workable job, so 50% is a C.
+GRADE_TABLE=[(90,"A+"),(80,"A"),(75,"B+"),(70,"B"),(60,"C+"),(50,"C"),(40,"D"),(30,"E"),(20,"F")]
 def grade_for(pct):
     for thr,g in GRADE_TABLE:
         if pct>=thr: return g
     return "F"
 
 def score(results):
+    """Grade on the IMPORTANCE-WEIGHTED pass rate, not a flat count of checks.
+
+    Every check carries a weight in PATTERN_META (3 = fundamental, 2 = matters, 1 = nice to have).
+    Counting checks flat made an unexplained acronym (weight 1) cost an article exactly as much as
+    never giving the fix (weight 3), which punished tidy-but-imperfect help centers for nitpicks.
+    The displayed "x/13" stays a plain check count — customers read it as "checks passed", and
+    weighted fractions there would be meaningless — but the grade and the fix queue use the weights.
+    """
     for r in results:
-        pa=fx=na=0
-        for c in r["checks"].values():
-            pa+=c["verdict"]=="Pass"; fx+=c["verdict"]=="Fix"; na+=c["verdict"]=="N/A"
+        pa=fx=na=0; wpass=wfix=0
+        for k,c in r["checks"].items():
+            w=PATTERN_META[k][3]
+            if c["verdict"]=="Pass": pa+=1; wpass+=w
+            elif c["verdict"]=="Fix": fx+=1; wfix+=w
+            else: na+=1
         r["passes"],r["fixes"],r["na"]=pa,fx,na; r["applicable"]=pa+fx; r["score"]=pa; r["score_str"]=f"{pa}/{pa+fx}"
-        r["pct"]=round(100*pa/max(1,pa+fx)); r["grade"]=grade_for(r["pct"])
+        r["weighted_passed"],r["weighted_fixes"]=wpass,wfix; r["weighted_applicable"]=wpass+wfix
+        r["pct"]=round(100*wpass/max(1,wpass+wfix)); r["grade"]=grade_for(r["pct"])
         intent=1.5 if re.search(r"\b(cancel|refund|billing|payment|log ?in|password|can'?t|unable|delete|reset|charge|pair|connect|setup|subscription|account)\b",r["title"],re.I) else 1.0
         r["leverage"]=round((r.get("vote_count",0) or 0)**0.5*intent,2)
-        r["priority"]=round(r["fixes"]*(1+r["leverage"]/10),2)
-    results.sort(key=lambda r:(-r["priority"],-r["fixes"]))
+        # queue by the weight of what's failing, so a fundamental gap outranks a pile of nitpicks
+        r["priority"]=round(r["weighted_fixes"]*(1+r["leverage"]/10),2)
+    results.sort(key=lambda r:(-r["priority"],-r["weighted_fixes"]))
     n=len(results)
     for i,r in enumerate(results):
         r["rank"]=i+1

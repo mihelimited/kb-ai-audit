@@ -124,7 +124,7 @@ def exec_summary(d, kb):
              "articles you choose so you can paste them straight back in (or push them as drafts).\n")
     L.append("## The headline\n")
     L.append(f"Your help centre scores an overall **{d['overall_grade']}** for AI-readiness "
-             f"({d['overall_pct']}% of checks passing across {n} articles). "
+             f"({d['overall_pct']}% AI-readiness score across {n} articles). "
              f"**{len(needfix)} articles** have at least one issue that can cost you a resolution; "
              f"**{len(clean)}** are already clean. Start with the priority list below "
              f"(busiest articles with the lowest grades first).\n")
@@ -211,7 +211,7 @@ def build_xlsx(d, path):
         verds=[a["checks"][k]["verdict"] for k in order]
         ws.append([a["rank"],a["title"],a["grade"],a["score_str"],a["priority_band"],a["vote_count"]]+verds+[""])
         ri=ws.max_row
-        gc=ws.cell(ri,3); gc.font=Font(bold=True,color=(BRAND["red"][1:] if a["grade"][0] in "DF" else BRAND["ink"][1:])); gc.alignment=Alignment(horizontal="center")
+        gc=ws.cell(ri,3); gc.font=Font(bold=True,color=(BRAND["red"][1:] if a["grade"][0] in "DEF" else BRAND["ink"][1:])); gc.alignment=Alignment(horizontal="center")
         for idx,k in enumerate(order):
             cell=ws.cell(ri,base+idx); v=a["checks"][k]["verdict"]
             cell.value={"Pass":"✓","Fix":"✕","N/A":"–"}[v]
@@ -325,7 +325,7 @@ def article_page_html(kb, rw, idx, total, prev_fn, next_fn, B):
     bg=rw.get("before_grade",""); ag=rw.get("after_grade","")
     badge=""
     if bg or ag:
-        bgc="gf" if str(bg)[:1] in "DF" else "gp"
+        bgc="gf" if str(bg)[:1] in "DEF" else "gp"
         badge=(f'<span class="gb {bgc}">{esc(bg)}</span><span class="arr">→</span>'
                f'<span class="gb gp">{esc(ag)}</span>')
     src=f'<div class="src">From <a href="{esc(src_u)}" target="_blank" rel="noopener">{src_t}</a></div>' if src_t else ""
@@ -419,7 +419,7 @@ def build_html(d, kb, path, rewrites=None, rewrite_links=None):
             v=a["checks"][k]["verdict"]; cls={"Pass":"p","Fix":"f","N/A":"n"}[v]
             glyph={"Pass":"✓","Fix":"✕","N/A":"–"}[v]
             cells+=f'<td class="{cls}" title="{esc(roll[k]["short"])} — {esc(a["checks"][k]["note"])}">{glyph}</td>'
-        gcls="gr"+(" gf" if a["grade"][0] in "DF" else "")
+        gcls="gr"+(" gf" if a["grade"][0] in "DEF" else "")
         prisl="pri-"+a["priority_band"].lower().replace(" ","")
         fn=(rewrite_links or {}).get(_norm_url(a["url"]))
         rwcell=(f'<td class="rwc"><a class="rwbtn" href="{esc(fn)}">View →</a></td>' if fn
@@ -553,7 +553,7 @@ rewrite the ones you choose in your own voice. <b>A red mark is an issue worth f
 <div class="sharebar"><a class="sharebtn" href="scorecard.html" target="_blank">📊 Open shareable scorecard</a>
 <button class="sharebtn2" id="sharecopy" type="button">Copy score summary</button></div>
 <div class="cards">
- <div class="card"><div class="big {('gf' if d['overall_grade'][0] in 'DF' else '')}">{d['overall_grade']}</div><div class="lbl">Help centre grade · {d['overall_pct']}% of checks pass</div></div>
+ <div class="card"><div class="big {('gf' if d['overall_grade'][0] in 'DF' else '')}">{d['overall_grade']}</div><div class="lbl">Help centre grade · {d['overall_pct']}% AI-readiness score</div></div>
  <div class="card alert"><div class="big">{needfix}</div><div class="lbl">Articles worth fixing</div></div>
  <div class="card"><div class="big">{d['article_count']-needfix}</div><div class="lbl">Already clean</div></div>
  <div class="card"><div class="big">{min(roll.items(),key=lambda kv:kv[1]['pass_pct'])[1]['pass_pct']}%</div><div class="lbl">Pass rate, weakest check</div></div>
@@ -565,7 +565,7 @@ rewrite the ones you choose in your own voice. <b>A red mark is an issue worth f
 <p class="hint">Ranked by how busy the article is (reader votes) and how many issues it has. Hover any cell for the specific finding. Filter and search to work down your own list. In the <b>Rewrite</b> column, <b>View →</b> opens an already-rewritten article; <b>Optimize</b> hands Claude a ready-made instruction to rewrite that one next.</p>
 <div class="filters">
  <input id="fq" type="search" placeholder="Search article titles…" aria-label="Search article titles">
- <select id="fg" aria-label="Filter by grade"><option value="">All grades</option><option value="F">F only</option><option value="D">D only</option><option value="C">C only</option><option value="B">B only</option><option value="A">A only</option><option value="DF">D &amp; F</option></select>
+ <select id="fg" aria-label="Filter by grade"><option value="">All grades</option><option value="F">F only</option><option value="E">E only</option><option value="D">D only</option><option value="C">C only</option><option value="B">B only</option><option value="A">A only</option><option value="DEF">D, E &amp; F</option></select>
  <select id="fp" aria-label="Filter by priority"><option value="">All priorities</option><option value="veryhigh">Very high</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="verylow">Very low</option></select>
  <select id="ff" aria-label="Filter by issues"><option value="">All articles</option><option value="needfix">Has issues to fix</option><option value="clean">Already clean</option></select>
  {('<select id="fr" aria-label="Filter by rewrite"><option value="">Rewrite: any</option><option value="1">Has updated article</option></select>' if n_rw else '')}
@@ -655,7 +655,7 @@ def build_scorecard(d, kb, path, B):
     roll=d["pattern_rollup"]; gradetop=d["overall_grade"]; pct=d["overall_pct"]; n=d["article_count"]
     needfix=sum(1 for a in d["results"] if a["fixes"]>0)
     weakest=sorted(roll.items(), key=lambda kv: kv[1]["pass_pct"])[:3]
-    gf = gradetop[0] in "DF"
+    gf = gradetop[0] in "DEF"
     gaps="".join(
         f'<div class="gap"><span class="gn">{esc(v["short"])}</span>'
         f'<span class="gt"><i style="width:{max(v["pass_pct"],3)}%"></i></span>'
@@ -707,7 +707,7 @@ border:2px solid {('var(--red)' if gf else 'var(--line)')};display:flex;flex-dir
       <h1 class="kbname">{esc(kb)}</h1>
       <div class="subt">How ready this help centre is for an AI support agent to answer from</div>
       <div class="stats">
-        <div class="stat"><div class="v {('gf' if gf else '')}">{pct}%</div><div class="l">of checks pass</div></div>
+        <div class="stat"><div class="v {('gf' if gf else '')}">{pct}%</div><div class="l">AI-readiness score</div></div>
         <div class="stat"><div class="v">{n}</div><div class="l">articles audited</div></div>
         <div class="stat"><div class="v">{needfix}</div><div class="l">worth fixing</div></div>
       </div>

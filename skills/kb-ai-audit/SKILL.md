@@ -33,6 +33,19 @@ fix to resolution rate, and leave a tracker they work down.
   the source, leave a clearly-marked `[VERIFY: …]` placeholder and call it out — do not guess.
   Minimising hallucination is the whole point: a confident wrong answer is worse than "I don't know".
 - **Ship the rewrite, not the grade.** The deliverable is done work to paste back in.
+- **Grade on the weighted score.** Each check carries an importance weight in `PATTERN_META`
+  (3 = fundamental, 2 = matters, 1 = nice to have), and the grade uses the **weighted** pass rate.
+  An unexplained acronym (weight 1) must not cost an article as much as never giving the fix
+  (weight 3). The `x/13` shown to the customer stays a plain count of checks passed; the grade and
+  the fix queue are the weighted figures. Two articles failing the same *number* of checks can and
+  should grade differently.
+- **Grade on a realistic scale, not a US school curve.** The 13 checks are a high bar that
+  virtually no help center was written against in the first place, so a US curve (where anything
+  under 60% is an F) hands almost every customer an F on the first pass — discouraging *and*
+  inaccurate. The scale is: **A+ 90+, A 80, B+ 75, B 70, C+ 60, C 50, D 40, E 30, F 20**. Half the
+  checks passing is an ordinary, workable help center — a **C**, not a failure. An **F** now means
+  failing 10 of 13 checks, which is a genuinely broken article, not merely an unpolished one. Report
+  the grade the tool produces; never re-grade an article harder by hand to make a point.
 - **Score objectively; rewrite on-brand.** Style never affects scoring; the derived style profile
   feeds the rewrites so voice is preserved (the answer to "aren't we writing for robots?").
 - **Bound the scope.** Most KBs are 20–150 articles — audit them all. Surface the worst first;
@@ -232,7 +245,7 @@ type, fully-rounded pills, white background, the myAskAI wordmark). All copy is 
 center"). Brand assets live in `scripts/assets/` and are copied to `out/assets/` — ship that folder with
 the HTML. (`report.html` inlines the wordmark, so it and `report.pdf` stand alone without `out/assets/`.)
 - **dashboard.html** — the hub: a top bar (open scorecard / copy score summary), a **hero** (left grade
-  card with the big letter grade + "% of checks pass"; right headline + explainer + stat chips), a
+  card with the big letter grade + "% AI-readiness score"; right headline + explainer + stat chips), a
   **by-question** section (three cards, one per find/use/trust question, each with per-check pass-% bars
   coloured by threshold), a **collapsed** "Your house style" panel (editable, saves to the browser,
   feeds Optimize), and the **"Fix these first"** list: search + grade/priority selects + "rewritten
@@ -246,7 +259,7 @@ the HTML. (`report.html` inlines the wordmark, so it and `report.pdf` stand alon
   Reconcile** button that hands Claude a resolution instruction, an article-age/freshness graph, and
   easily-confused names with links to the articles involved. Self-contained, re-openable.
 - **scorecard.html** — a self-contained, share-ready card (1200×630): cream card, a solid grade block
-  (orange F/D, amber C, green A/B) with the big letter, overall %, articles audited / worth fixing, and
+  (orange F/E/D, amber C, green A/B) with the big letter, overall %, articles audited / worth fixing, and
   the three biggest gaps as bars. Screenshot or open to share.
 - **report.html → report.pdf** — the **branded, print-optimized, audit-only report** (no rewrites),
   designed as a **lead magnet** in the myaskai.com look (cream canvas `#FAF9F1`, orange speech-bubble
