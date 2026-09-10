@@ -2,7 +2,7 @@
 """verify_rewrites.py - hallucination guard for rewrites.
 
 For every rewritten article it extracts the *checkable facts* it asserts - measurements and specs
-(numbers + units), and quoted strings (error messages / exact UI labels) - and confirms each one
+(numbers, counts, identifiers such as tag names, and quoted strings / exact UI labels) - and confirms each one
 actually appears in the source help-center articles. Anything that doesn't trace back is flagged
 for a human to verify, so a rewrite can't quietly invent a number, spec or button name.
 
@@ -44,23 +44,55 @@ UNIT=r"(?:mah|gb|mb|kb|tb|hours?|hrs?|minutes?|mins?|seconds?|secs?|days?|weeks?
 MEASURE=re.compile(r"(?<![\w.])-?\d[\d.,]*\s*(?:[-/]\s*-?\d[\d.,]*\s*)?(?:to\s*-?\d[\d.,]*\s*)?"+UNIT, re.I)
 INCHQUOTE=re.compile(r'\b\d[\d.,]*\s?"(?=[\s/).,]|$)')      # 1" pole
 QUOTED=re.compile(r'"([^"\n]{3,70})"')                       # error messages / UI labels in quotes
+# Identifiers and UI labels are the highest-risk fabrication in a software help center: an invented
+# tag name or menu path produces a confidently-wrong answer. They were not being checked at all,
+# so a rewrite full of `ai-agent-replied`-style tags reported "0 facts checked" and passed.
+BACKTICK=re.compile(r"`([^`\n]{2,60})`")                     # `ai-agent-replied`, `ai_chat_status`
+BOLDLABEL=re.compile(r"\*\*([A-Z][^*\n]{2,60})\*\*")          # **Improve > Test**, **AI Chat Status**
+# Bare counts ("50 questions", "50 to 150") carry no unit, so MEASURE never saw them.
+BARENUM=re.compile(r"(?<![\w.$])(\d{2,}(?:[.,]\d+)?)(?![\w.%])")
 
 # strings that are NOT facts to check (structural labels we add ourselves)
 SKIP_QUOTED=re.compile(r"^(applies to|last verified|what changed|good to know|the short answer)\b", re.I)
 
+def _looks_like_ui_label(q):
+    """A menu path or a Title Case field name — not a sentence the author bolded.
+
+    Without this, prose labels ("**It replied to the customer**") are reported as unverifiable UI
+    strings and bury the real flags.
+    """
+    if ">" in q: return True
+    words=[w for w in re.findall(r"[A-Za-z][A-Za-z0-9'&/-]*", q)]
+    if not words or len(words)>6: return False
+    caps=sum(1 for w in words if w[:1].isupper())
+    return caps/len(words) >= 0.6
+
 def facts_in(body):
+    raw=body                                    # backticks/bold survive only before tag-stripping
     body=_clean_body(body)
     measures=set()
     for m in MEASURE.finditer(body): measures.add(m.group(0).strip())
     for m in INCHQUOTE.finditer(body): measures.add(m.group(0).strip())
+    for m in BARENUM.finditer(body): measures.add(m.group(1).strip())
     quotes=set()
     for m in QUOTED.finditer(body):
         q=m.group(1).strip()
         if q and not SKIP_QUOTED.match(q): quotes.add(q)
-    return measures, quotes
+    labels=set()
+    for m in BACKTICK.finditer(raw):
+        q=m.group(1).strip()
+        if q and not SKIP_QUOTED.match(q): labels.add(q)
+    for m in BOLDLABEL.finditer(raw):
+        q=m.group(1).strip()
+        if q and not SKIP_QUOTED.match(q) and _looks_like_ui_label(q): labels.add(q)
+    return measures, quotes, labels
 
 def verified(fact, src_norm, src_compact):
     n=_norm(fact); c=_compact(fact)
+    # A bare count has no unit to anchor it, so substring containment would let "250" be satisfied
+    # by "3250". Require a standalone occurrence.
+    if re.fullmatch(r"\d[\d.,]*", n):
+        return bool(re.search(r"(?<![\d.,])"+re.escape(n)+r"(?![\d.,])", src_norm))
     if c and c in src_compact: return True
     if n and n in src_norm: return True
     # ranges: check each endpoint+unit individually (e.g. "5-14 days" -> "14 days")
@@ -90,32 +122,36 @@ def main():
         # check against the named source first, then the whole help center (splits/consolidation)
         sn=_norm(src.get("body","")) if src else ""
         sc=_compact(src.get("body","")) if src else ""
-        measures, quotes=facts_in(body)
+        measures, quotes, labels=facts_in(body)
         flagged=[]
-        for f in sorted(measures):
-            total_facts+=1
-            if not (verified(f, sn, sc) or verified(f, corpus_norm, corpus_compact)):
-                flagged.append(("spec", f))
-        for f in sorted(quotes):
-            total_facts+=1
-            if not (verified(f, sn, sc) or verified(f, corpus_norm, corpus_compact)):
-                flagged.append(("quote", f))
+        for kind, group in (("spec", measures), ("quote", quotes), ("label", labels)):
+            for f in sorted(group):
+                total_facts+=1
+                if not (verified(f, sn, sc) or verified(f, corpus_norm, corpus_compact)):
+                    flagged.append((kind, f))
         total_flags+=len(flagged)
-        rows.append((r.get("new_title") or r.get("title") or "?", len(measures)+len(quotes), flagged))
+        rows.append((r.get("new_title") or r.get("title") or "?",
+                     len(measures)+len(quotes)+len(labels), flagged))
 
     # report
     L=["# Hallucination check — fact verification of rewrites\n",
        f"Checked **{len(rewrites)}** rewritten article(s): **{total_facts}** checkable facts "
-       f"(measurements/specs + quoted strings), **{total_flags}** not found in the source.\n",
+       f"(measurements/specs, quoted strings, identifiers and UI labels), **{total_flags}** not found in the source.\n",
        "A flag means the fact (a number/spec, or a quoted error message/label) doesn't appear in the "
        "source help-center articles — verify it before publishing. Paraphrased prose isn't checked.\n"]
-    if total_flags==0:
-        L.append("✅ **Every checkable fact traces back to the source.** No invented specs or quotes detected.\n")
+    if total_facts==0:
+        L.append("⚠️ **No checkable facts were found, so nothing was verified.** This is NOT a pass — "
+                 "check the rewrites by hand, and treat a rewrite with no numbers, identifiers or "
+                 "quoted labels as unverified.\n")
+    elif total_flags==0:
+        L.append("✅ **Every checkable fact traces back to the source.** No invented specs, labels or quotes detected.\n")
     for title, nfacts, flagged in rows:
         if flagged:
             L.append(f"\n## ⚠️ {title}  ({len(flagged)} to verify of {nfacts} facts)")
             for kind, f in flagged:
                 L.append(f"- **[{kind}]** `{f}` — not found in source")
+        elif nfacts==0:
+            L.append(f"\n## ⚠️ {title}  (no checkable facts — NOT verified)")
         else:
             L.append(f"\n## ✅ {title}  ({nfacts} facts, all verified)")
     report="\n".join(L)+"\n"

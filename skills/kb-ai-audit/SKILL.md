@@ -186,8 +186,9 @@ Offer a scheduled monthly re-audit so the grade is tracked over time, not a one-
      the copied text), so the customer pastes a clean article and works the checklist separately.
    - **Fact-check before presenting (anti-hallucination).** Once `rewrites.json` exists, run
      `scripts/verify_rewrites.py rewrites.json --source articles.json -o out/verify_report.md`. It
-     extracts every checkable fact in each rewrite (measurements/specs + quoted error messages / UI
-     labels) and confirms each appears in the source articles; anything that doesn't is flagged.
+     extracts every checkable fact in each rewrite (numbers and counts, identifiers such as tag names,
+     UI labels and quoted strings) and confirms each appears in the source articles; anything that
+     doesn't is flagged. A report of `0 facts checked` is **not** a pass — verify that rewrite by hand.
      **Resolve every flag** — correct the rewrite to match the source, or replace the value with a
      `[VERIFY: …]` note — and re-run until clean, *then* present the refreshed dashboard alongside
      `rewrite_pack.md` and `verify_report.md`. (It checks hard facts, not paraphrased prose — but those
@@ -226,7 +227,7 @@ even when running by hand; nothing should be casually skipped.)
 | **Coherence review** | Every contradiction & near-duplicate candidate reviewed; overly-conservative false positives **deleted from `results.json → corpus`** (and their folded checks reverted) before the dashboard is built. |
 | **Deliverables** | branded `dashboard.html`, `scorecard.html`, `report.html`, `audit_tracker.xlsx`, `exec_summary.md` all exist and open. The dashboard is **opened for the user after the default priority rewrites are baked in**, so it shows the rewrite pages. |
 | **Rewrites** | Each rewrite uses **only source facts**; `body` contains **no `[VERIFY]` text**; every source image/video carried over; before→after grade recorded. |
-| **Fact-check** | `verify_rewrites.py` reports **0 flags** — every measurement / quoted string traces to the source. Resolve every flag before presenting. |
+| **Fact-check** | `verify_rewrites.py` reports **0 flags across a non-zero fact count** — every number, identifier, UI label and quoted string traces to the source. Resolve every flag before presenting. **`0 facts checked` is not a pass**: it means nothing was verifiable, so check that rewrite by hand. |
 | **Grade integrity** | Every flagged check is **either genuinely fixed or listed in `resolved_notes` with a reason** — nothing silently dropped; `raw_grade` keeps the unadjusted score. |
 | **Render** | Each `rewrite-NN.html` has the two **collapsed** panels **above** the article and **outside** the copy region; `[VERIFY]` lives only in the verify checklist, never in the copied body. |
 | **Report (PDF)** | `report.pdf` exists (rendered from `report.html`), is **branded and audit-only — no rewrites**, and is **handed back to the user as an attached asset with a clickable link**. If no PDF engine ran, the report was print-to-PDF'd by hand and still delivered — never skipped. |
