@@ -12,6 +12,7 @@ Score each Pass / Fix / N/A. `scripts/kb_audit.py` pre-scores all 13 and attache
 1. **One question per article** — one article answers one question; a page bundling several can serve the wrong part.
 2. **Worded the way customers ask** — title, headings and body use the customer's words: the symptom (not the internal feature), and the **exact** error message and button names they'd type.
 3. **Says who and where it applies** — a top line naming who/which device/plan/region/version it's for.
+   *Only assessed when the answer actually varies by audience; an article that applies to everyone is marked N/A.*
 
 ## Can the AI use the answer?
 4. **Answer first, and each part stands alone** — the answer is in the opening lines of each section, and no section leans on "as mentioned above".
@@ -24,7 +25,9 @@ Score each Pass / Fix / N/A. `scripts/kb_audit.py` pre-scores all 13 and attache
 
 ## Is it the right, current answer?
 11. **Says what it doesn't cover or isn't possible** — states limits and known issues plainly, so the AI doesn't invent a workaround.
+    *Only assessed on how-to, troubleshooting and policy articles, where "can this be done?" is a live question; a short reference article is marked N/A.*
 12. **Dated and current** — a "last verified" date; expired/old content flagged; versions labeled.
+    *The platform's own `updated_at` within ~18 months counts as an anchor, since the help center shows it to readers. Only genuinely time-bound content (promos, prices, deadlines, beta) is required to carry one.*
 13. **No conflicting duplicates** — each fact lives in one article; others point to it.
 
 Checks 2, 4, 6, 7, 9 are judgment calls — the script flags them `llm_confirm: true` so they get a

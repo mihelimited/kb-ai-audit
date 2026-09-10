@@ -85,9 +85,41 @@ def extract_media(b):
     return out
 def sentences(t): return [s.strip() for s in re.split(r"(?<=[.!?])\s+",t) if s.strip()]
 
-SCOPE_RE=re.compile(r"\b(applies to|available on|available in|only available|for (us|eu|uk) (customers|users)|desktop( and browser)? only|mobile only|on (ios|android)|pro plan|free plan|version \d|v\d\.\d|nature cam|birdbuddy 2)\b",re.I)
+# Ways a help center actually names its audience up front. (Previously this carried the demo
+# customer's own product names — "nature cam", "birdbuddy 2" — which no other customer can match.)
+# Audience tokens — the things a scope line actually names.
+_AUD=(r"(?:ios|android|iphone|ipad|desktop|mobile|web|browser|chrome|safari|firefox|edge|windows|macos|mac|linux|"
+      r"free|pro|plus|team|business|starter|premium|enterprise|paid|trial|legacy|plan|tier|subscription|"
+      r"admins?|owners?|members?|agents?|managers?|customers?|users?|accounts?|us|eu|uk|ca|au)")
+# A scope DECLARATION, not a passing mention. Anchored to audience tokens so ordinary prose like
+# "not available on items marked final sale" or "on Android you must also…" doesn't count.
+# (Previously this also carried the demo customer's own product names — "nature cam", "birdbuddy 2".)
+SCOPE_RE=re.compile(r"\b(?:"
+ r"(?:applies?|applicable|apply) to\b|"
+ r"this (?:article|guide|page) is (?:for|about who)|intended for\b|relevant (?:to|for)\b|who (?:this|it)(?:'s| is) for|"
+ r"available (?:on|in|to|for) "+_AUD+r"|only available\b|"
+ r"(?:ios|android|desktop|mobile|web|browser|windows|mac|linux)(?:[ -]and[ -]\w+)? only\b|"
+ r"(?:free|pro|plus|team|business|starter|premium|enterprise|paid|trial|legacy) (?:plan|tier|accounts?|users?|subscriptions?)\b|"
+ r"(?:admins?|owners?|members?|agents?|managers?) (?:only|can)\b|"
+ r"requires? (?:a|an|the) \w+ (?:plan|account|subscription|role|permission)\b|"
+ r"for (?:us|eu|uk|ca|au) (?:customers|users|accounts)\b|"
+ r"version \d|v\d\.\d"
+ r")",re.I)
+# Does anything here actually VARY by audience? If the article never mentions a platform, plan,
+# region or role, there is no scope to state and demanding one is a false positive.
+SCOPE_DEP_RE=re.compile(r"\b(ios|android|iphone|ipad|desktop app|mobile app|browser|chrome|safari|firefox|windows|macos|linux|"
+ r"app store|google play|free plan|pro plan|paid plan|premium|enterprise|subscription tier|"
+ r"admin|owner|permission|role|region|country)\b",re.I)
 NEGBOUND_RE=re.compile(r"(this (article|guide) (doesn'?t|does not) cover|not covered (here|in this)|if you'?re looking for)",re.I)
-LIMIT_RE=re.compile(r"\b(not supported|isn'?t possible|is not possible|cannot|can'?t be|not available|no longer|not currently|unable to|doesn'?t support|won'?t be able|only available|not eligible|not able to)\b",re.I)
+LIMIT_RE=re.compile(r"\b(not supported|isn'?t possible|is not possible|cannot|can'?t be|can'?t currently|not available|"
+ r"no longer|not currently|unable to|doesn'?t support|don'?t support|won'?t be able|only available|not eligible|not able to|"
+ r"not include|doesn'?t include|excludes?|except( for)?|unless|limited to|limits? of|maximum( of)?|max(imum)? \d|up to \d|"
+ r"at (most|this time)|only (works|applies|possible|supports?)|must be|requires?|not possible to|there is no way|"
+ r"keep in mind|please note|note that|be aware)\b",re.I)
+# Articles where "can this be done?" is a live customer question — how-tos, troubleshooting and
+# policy pages. A short reference or announcement has no limits to state; failing it is noise.
+POLICY_RE=re.compile(r"\b(refund|billing|payment|invoice|subscription|cancel|plan|pricing|price|upgrade|downgrade|"
+ r"policy|terms|privacy|data|delete|deletion|eligib|warrant|return|shipping|deliver|security|compliance)\b",re.I)
 CLICKHERE_RE=re.compile(r"\b(click here|tap here|see here|read here|consult this article|refer to (our|this|the)|see (our|this|the) .{0,30}(article|guide|page))\b",re.I)
 HIDDEN_RE=re.compile(r"(<details|class=\"[^\"]*(accordion|collaps|toggle|spoiler|tab-pane|tabs?-)|read more|show more|expand)",re.I)
 BAREYN_RE=re.compile(r"<p[^>]*>\s*(<strong>)?\s*(A[:.]\s*)?(Yes|No)[.!]?\s*(</strong>)?\s*</p>",re.I)
@@ -102,7 +134,25 @@ SINCE_DATE_RE=re.compile(r"since\s+\w*\s*20[12]\d",re.I)
 ACRO_RE=re.compile(r"\b([A-Z]{2,6}(?:s)?)\b")
 ACRO_STOP={"FAQ","FAQS","US","UK","EU","PST","PDT","PT","AM","PM","HD","QR","OS","ID","DM","DMS","URL","API","TOC","NOTE","Q","A","SKU","SKUS","USB","LED","AI","II","TV","X","BUDDY","OK","PDF"}
 DEP_RE=re.compile(r"\b(no longer supported|deprecated|retired|expired|discontinued|sunset|legacy)\b",re.I)
-TIME_RE=re.compile(r"\b(promo|promotion|price|pricing|cost|\$|trial|offer|event|seasonal|deadline|expires?|firmware|version|update)\b",re.I)
+# Genuinely time-bound content only. "version", "update" and "cost" appear in a huge share of
+# ordinary articles ("update the app", "at no cost"), which made nearly everything time-sensitive
+# and therefore demand a "last verified" line.
+TIME_RE=re.compile(r"\b(promo|promotion|pricing|price of|\$\d|trial period|special offer|limited time|"
+ r"event|seasonal|deadline|expires?|expiry|firmware \d|black friday|christmas|holiday hours|"
+ r"beta|early access|coming soon|launch(ing|es)? (on|in)|as of \w+ 20\d\d)\b",re.I)
+
+UPDATED_MAX_DAYS=548  # ~18 months: the help center itself is showing a recent last-updated date
+def updated_age_days(v):
+    """Days since the platform's own updated_at, or None if absent/unparseable.
+
+    Zendesk/Intercom/Freshdesk all return this and the help center displays it to readers, so it
+    is a real freshness anchor — it was being captured into results.json and then ignored.
+    """
+    if not v: return None
+    m=re.search(r"(\d{4})-(\d{2})-(\d{2})",str(v))
+    if not m: return None
+    try: return (TODAY-datetime.date(int(m.group(1)),int(m.group(2)),int(m.group(3)))).days
+    except ValueError: return None
 
 def first_block(b,n=260):
     ps=get_paragraphs(b); intro=ps[0] if ps else strip_tags(b); return intro[:n],intro
@@ -138,9 +188,15 @@ def check_article(a):
     if needs_quote: notes.append("a problem article with no exact error text in quotes")
     res[CHK_WORDS]=R("Fix" if notes else "Pass","; ".join(notes) if notes else "Uses the customer's own words.",llm=True)
 
-    # 3 Scope
-    scope=bool(SCOPE_RE.search(intro)) or bool(SCOPE_RE.search(" ".join(paras[:2])))
-    res[CHK_SCOPE]=R("Pass" if scope else "Fix","Scope named near the top." if scope else "No 'who / which device / which plan' line at the top.")
+    # 3 Scope — only demanded where the answer actually varies by audience
+    top=" ".join([intro]+paras[:3]+[h for _,h in heads[:4]])
+    scope=bool(SCOPE_RE.search(top))
+    if not scope and not SCOPE_DEP_RE.search(text):
+        # Nothing here differs by platform, plan, region or role, so there is no scope to state.
+        res[CHK_SCOPE]=R("N/A","Applies to everyone — nothing in it varies by device, plan or region.")
+    else:
+        res[CHK_SCOPE]=R("Pass" if scope else "Fix","Scope named near the top." if scope
+                         else "Mentions a device/plan/region, but no 'who this is for' line near the top.")
 
     # 4 Answer first + stands alone
     answer=bool(re.search(r"\b(you can|to (do|start|claim|change|enable|cancel|charge|pair|reset|fix|connect)|tap|press|go to|click|select|yes|no|download|open|first|\d)\b",head80,re.I))
@@ -187,17 +243,24 @@ def check_article(a):
         esc=bool(ESC_RE.search(text))
         res[CHK_ESC]=R("Pass" if esc else "Fix","Gives a next step if it fails." if esc else "No fallback - nothing to do if the steps don't work.")
 
-    # 11 Limits / what it doesn't cover
+    # 11 Limits / what it doesn't cover — only where "can this be done?" is a live question
     lim=bool(NEGBOUND_RE.search(text)) or bool(LIMIT_RE.search(text))
-    res[CHK_LIMITS]=R("Pass" if lim else "Fix","States limits / what it doesn't cover." if lim else "Never says what it doesn't cover or what isn't possible.")
+    limits_matter=actionable or bool(POLICY_RE.search(title+" "+labels+" "+text))
+    if not lim and not limits_matter:
+        res[CHK_LIMITS]=R("N/A","Short reference article — no capability or policy boundary to state.")
+    else:
+        res[CHK_LIMITS]=R("Pass" if lim else "Fix","States limits / what it doesn't cover." if lim
+                          else "Never says what it doesn't cover or what isn't possible.")
 
     # 12 Freshness
-    fresh=bool(re.search(r"\b(last (verified|updated|reviewed)|as of)\b",text,re.I))
+    # An explicit in-body date, OR the platform's own recent last-updated stamp, anchors freshness.
+    age=updated_age_days(a.get("updated_at"))
+    fresh=bool(re.search(r"\b(last (verified|updated|reviewed)|as of)\b",text,re.I)) or (age is not None and age<=UPDATED_MAX_DAYS)
     # past years, but ignore "since YYYY" history (e.g. "since 2015") - that's not staleness
     stale=[y for y in sorted({int(x) for x in DATE_RE.findall(text) if int(x)<TODAY.year})
            if not re.search(r"since\s+\w*\s*"+str(y),text,re.I)]
     ts=bool(TIME_RE.search(text)) or bool(TIME_RE.search(labels)); dep=bool(DEP_RE.search(text)); n12=[]
-    if not fresh: n12.append("no 'last verified' date")
+    if not fresh: n12.append("no 'last verified' date" if age is None else f"last updated {age//30} months ago")
     if stale: n12.append("past dates: "+",".join(map(str,stale)))
     v12="Pass"
     if (ts or dep) and (not fresh or stale): v12="Fix"
