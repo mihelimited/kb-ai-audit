@@ -24,7 +24,9 @@ except Exception:
 OUT = Path(_A.outdir); OUT.mkdir(parents=True, exist_ok=True)
 KB = _A.kb_name
 RES = json.loads(Path(_A.results).read_text())
-RW = json.loads(Path(_A.rewrites).read_text()).get("rewrites", [])
+# Step 4 of the pipeline builds the audit deliverables BEFORE any rewrites exist, so a missing
+# rewrites file is the normal first-run case, not an error.
+RW = json.loads(Path(_A.rewrites).read_text()).get("rewrites", []) if Path(_A.rewrites).exists() else []
 # brand assets: copy from --assets (or a sibling assets/ dir) into <outdir>/assets if not already there
 _asrc = _A.assets or os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 if os.path.isdir(_asrc):
@@ -50,7 +52,7 @@ def slugify(s):
     return s[:50].strip("-")
 def grade_color(letter):
     c = (letter or "")[:1]
-    return "#EA3609" if c in "FD" else ("#8A6D3B" if c == "C" else ("#2F7D57" if c in "BA" else "#1B1B1B"))
+    return "#EA3609" if c in "FED" else ("#8A6D3B" if c == "C" else ("#2F7D57" if c in "BA" else "#1B1B1B"))
 def bar_color(pct):
     return "#EA3609" if pct < 40 else ("#E0892B" if pct < 70 else "#2F7D57")
 def pri_val(band): return (band or "").lower().replace(" ", "")
@@ -377,7 +379,7 @@ details.hsfold[open] .chev{transform:rotate(90deg)}
       <img src="assets/logo-texture.png" alt="" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.07;pointer-events:none">
       <div style="position:relative;font:500 12px var(--font-ui);color:#868181;text-transform:uppercase;letter-spacing:.14em">Help center grade</div>
       <div style="position:relative;font-family:var(--font-display);font-weight:700;font-size:138px;line-height:.86;letter-spacing:-.05em;color:{gcol};margin:10px 0 6px">{esc(overall)}</div>
-      <div style="position:relative;font:500 15px var(--font-ui);color:#1B1B1B">{r["overall_pct"]}% of checks pass</div>
+      <div style="position:relative;font:500 15px var(--font-ui);color:#1B1B1B">{r["overall_pct"]}% AI-readiness score</div>
     </div>
     <div>
       <h1 style="font-family:var(--font-display);font-weight:700;font-size:44px;line-height:1.03;letter-spacing:-.04em;color:#1B1B1B;margin:0 0 14px;text-wrap:balance">{esc(headline)}</h1>
@@ -403,7 +405,7 @@ details.hsfold[open] .chev{transform:rotate(90deg)}
     </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0 6px">
       <input id="fq" type="search" placeholder="Search article titles&hellip;" style="flex:1;min-width:180px;font:400 13.5px var(--font-ui);color:#1B1B1B;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:1000px;padding:9px 15px">
-      <select id="fg" class="fsel" style="font:500 13px var(--font-ui);color:#1B1B1B;background-color:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:1000px;padding:9px 38px 9px 16px;cursor:pointer"><option value="">All grades</option><option value="F">F only</option><option value="D">D only</option><option value="C">C only</option><option value="B">B only</option><option value="A">A only</option></select>
+      <select id="fg" class="fsel" style="font:500 13px var(--font-ui);color:#1B1B1B;background-color:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:1000px;padding:9px 38px 9px 16px;cursor:pointer"><option value="">All grades</option><option value="F">F only</option><option value="E">E only</option><option value="D">D only</option><option value="C">C only</option><option value="B">B only</option><option value="A">A only</option></select>
       <select id="fp" class="fsel" style="font:500 13px var(--font-ui);color:#1B1B1B;background-color:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:1000px;padding:9px 38px 9px 16px;cursor:pointer"><option value="">All priorities</option><option value="veryhigh">Very high</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="verylow">Very low</option></select>
       <label style="display:inline-flex;align-items:center;gap:7px;font:400 13px var(--font-ui);color:#1B1B1B;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:1000px;padding:8px 14px;cursor:pointer"><input id="frw" type="checkbox" style="accent-color:#EA3609">Rewritten only</label>
     </div>
@@ -527,7 +529,7 @@ def build_scorecard():
         <div style="font-family:var(--font-display);font-weight:700;font-size:52px;line-height:1;letter-spacing:-.04em;color:#1B1B1B;margin-bottom:6px">{esc(KB)}</div>
         <div style="font:300 19px/1.35 var(--font-body);color:#2F2F2F;margin-bottom:22px">How ready this help center is for an AI support agent to answer from.</div>
         <div style="display:flex;gap:34px;margin-bottom:24px">
-          <div><div style="font-family:var(--font-display);font-weight:700;font-size:34px;color:#EA3609;letter-spacing:-.03em">{r["overall_pct"]}%</div><div style="font:300 13.5px var(--font-body);color:#868181">of checks pass</div></div>
+          <div><div style="font-family:var(--font-display);font-weight:700;font-size:34px;color:#EA3609;letter-spacing:-.03em">{r["overall_pct"]}%</div><div style="font:300 13.5px var(--font-body);color:#868181">AI-readiness score</div></div>
           <div><div style="font-family:var(--font-display);font-weight:700;font-size:34px;color:#1B1B1B;letter-spacing:-.03em">{total}</div><div style="font:300 13.5px var(--font-body);color:#868181">articles audited</div></div>
           <div><div style="font-family:var(--font-display);font-weight:700;font-size:34px;color:#1B1B1B;letter-spacing:-.03em">{needfix}</div><div style="font:300 13.5px var(--font-body);color:#868181">worth fixing</div></div>
         </div>
@@ -725,7 +727,7 @@ def build_report():
       </div>
       <div style="background:var(--line);align-self:stretch"></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">
-        {kbig(f'{r["overall_pct"]}%', "var(--red)", "of checks pass")}
+        {kbig(f'{r["overall_pct"]}%', "var(--red)", "AI-readiness score")}
         {kbig(total, "var(--ink)", "articles graded")}
         {kbig(needfix, "var(--red)", "worth fixing")}
       </div>
