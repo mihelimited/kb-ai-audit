@@ -3,7 +3,7 @@
 
 For every rewritten article it extracts the *checkable facts* it asserts - measurements and specs
 (numbers + units), and quoted strings (error messages / exact UI labels) - and confirms each one
-actually appears in the source help-centre articles. Anything that doesn't trace back is flagged
+actually appears in the source help-center articles. Anything that doesn't trace back is flagged
 for a human to verify, so a rewrite can't quietly invent a number, spec or button name.
 
 Deterministic, stdlib-only, no network. It cannot prove a rewrite is fact-perfect (paraphrased prose
@@ -87,7 +87,7 @@ def main():
         body=r.get("body","")
         src_url=re.sub(r"^https?://","",(r.get("source_url") or "")).rstrip("/").lower()
         src=by_url.get(src_url)
-        # check against the named source first, then the whole help centre (splits/consolidation)
+        # check against the named source first, then the whole help center (splits/consolidation)
         sn=_norm(src.get("body","")) if src else ""
         sc=_compact(src.get("body","")) if src else ""
         measures, quotes=facts_in(body)
@@ -108,7 +108,7 @@ def main():
        f"Checked **{len(rewrites)}** rewritten article(s): **{total_facts}** checkable facts "
        f"(measurements/specs + quoted strings), **{total_flags}** not found in the source.\n",
        "A flag means the fact (a number/spec, or a quoted error message/label) doesn't appear in the "
-       "source help-centre articles — verify it before publishing. Paraphrased prose isn't checked.\n"]
+       "source help-center articles — verify it before publishing. Paraphrased prose isn't checked.\n"]
     if total_flags==0:
         L.append("✅ **Every checkable fact traces back to the source.** No invented specs or quotes detected.\n")
     for title, nfacts, flagged in rows:

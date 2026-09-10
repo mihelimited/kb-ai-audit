@@ -43,7 +43,7 @@ def _yt_id(s):
 
 def _yt_facade(vid, embed):
     """A click-to-play thumbnail (works from any origin, incl. file://). The original embed is
-    kept in data-embed so the Copy button can paste a real video into the help centre."""
+    kept in data-embed so the Copy button can paste a real video into the help center."""
     thumb=f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"; watch=f"https://www.youtube.com/watch?v={vid}"
     return (f'<a class="ytfacade" href="{watch}" target="_blank" rel="noopener" '
             f'data-embed="{esc(embed)}" data-watch="{watch}">'
@@ -75,7 +75,7 @@ def md_to_html(md):
             while i<n and re.match(r'\s*>', lines[i]):
                 buf.append(re.sub(r'\s*>\s?', '', lines[i], count=1)); i+=1
             qt=" ".join(b for b in buf if b.strip())
-            # "Applies to:" renders as a plain styled paragraph, NOT a blockquote — some help-centre
+            # "Applies to:" renders as a plain styled paragraph, NOT a blockquote — some help-center
             # editors convert a pasted blockquote into a callout and drop everything after the bold lead-in.
             if re.match(r'\s*\*\*applies to', qt, re.I):
                 out.append('<p class="applies">'+_inline(qt)+'</p>')
@@ -113,22 +113,22 @@ def exec_summary(d, kb):
     needfix=[a for a in r if a["fixes"]>0]; clean=[a for a in r if a["fixes"]==0]
     weakest=sorted(roll.items(), key=lambda kv: kv[1]["pass_pct"])[:4]
     L=[]
-    L.append(f"# {kb} — Help Centre AI-Readiness Audit\n")
+    L.append(f"# {kb} — Help Center AI-Readiness Audit\n")
     L.append(f"*{n} articles checked · generated {d['generated'][:10]}*\n")
     L.append("## What this is\n")
-    L.append("An AI support agent doesn't read your help centre the way a person does. It looks at "
+    L.append("An AI support agent doesn't read your help center the way a person does. It looks at "
              "**one article at a time, with no memory of the last one**, and answers only from what's "
              "in front of it. It can't scroll past intro text, click 'see also', read a screenshot, or "
              "know which article is the up-to-date one. This audit grades every article on the 13 things "
              "that decide whether the AI can actually answer from it — then, if you want, rewrites the "
              "articles you choose so you can paste them straight back in (or push them as drafts).\n")
     L.append("## The headline\n")
-    L.append(f"Your help centre scores an overall **{d['overall_grade']}** for AI-readiness "
+    L.append(f"Your help center scores an overall **{d['overall_grade']}** for AI-readiness "
              f"({d['overall_pct']}% AI-readiness score across {n} articles). "
              f"**{len(needfix)} articles** have at least one issue that can cost you a resolution; "
              f"**{len(clean)}** are already clean. Start with the priority list below "
              f"(busiest articles with the lowest grades first).\n")
-    L.append("## The biggest wins across your whole help centre\n")
+    L.append("## The biggest wins across your whole help center\n")
     for p,v in weakest:
         L.append(f"- **{p}** — {v['pass_pct']}% of articles pass. *Why it matters:* {v['why']}")
     L.append("")
@@ -145,7 +145,7 @@ def exec_summary(d, kb):
         L.append(f"  - [Open article]({a['url']})\n")
     c=d.get("corpus")
     if c:
-        L.append("## Across your whole help centre (coherence)\n")
+        L.append("## Across your whole help center (coherence)\n")
         L.append("These look between and across articles — what a per-article grade can't see:\n")
         cov=c["coverage"]
         if cov["status"]=="locked":
@@ -349,7 +349,7 @@ def article_page_html(kb, rw, idx, total, prev_fn, next_fn, B):
 <div class="ah"><h1>{title}</h1><div class="gr">{badge}</div></div>
 {src}
 <div class="copyrow"><button class="copybtn" id="copybtn" type="button">Copy article</button>
-<span class="copyhint">Copies the whole article — title, text, images and video — ready to paste straight into your help centre.</span></div>
+<span class="copyhint">Copies the whole article — title, text, images and video — ready to paste straight into your help center.</span></div>
 <div class="body" id="articlebody">{md_to_html(body)}</div>
 <textarea id="rawmd" readonly hidden>{esc(body)}</textarea>
 {notes}
@@ -456,11 +456,11 @@ def build_html(d, kb, path, rewrites=None, rewrite_links=None):
     # shareable one-line summary + scorecard link
     weakest_check,weakest_v=min(roll.items(),key=lambda kv:kv[1]['pass_pct'])
     share_summary=(f"{kb} scored {d['overall_grade']} ({d['overall_pct']}%) for AI-readiness across "
-                   f"{d['article_count']} help-centre articles. Biggest gap: \"{weakest_check}\" "
+                   f"{d['article_count']} help-center articles. Biggest gap: \"{weakest_check}\" "
                    f"({weakest_v['pass_pct']}% pass). Audit by My AskAI — myaskai.com")
     share_js=json.dumps(share_summary)
     B=BRAND
-    doc=f"""<!doctype html><html><head><meta charset="utf-8"><title>{esc(kb)} — Help Centre AI-Readiness Audit</title>
+    doc=f"""<!doctype html><html><head><meta charset="utf-8"><title>{esc(kb)} — Help Center AI-Readiness Audit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -543,22 +543,22 @@ border-radius:7px;padding:6px 11px;cursor:pointer}}.hsbtn:hover{{border-color:va
 .sharebtn2{{color:var(--red);background:var(--surface)}}.sharebtn2:hover{{background:var(--tint)}}.sharebtn2.ok{{color:#fff;background:#16794a;border-color:#16794a}}
 </style></head><body><div class="wrap">
 <div class="brandbar"><span class="bubble"></span><span class="logo">my<span>AskAI</span></span>
-<span class="kicker">Help Centre AI-Readiness Audit</span></div>
+<span class="kicker">Help Center AI-Readiness Audit</span></div>
 <h1>{esc(kb)}</h1>
 <div class="sub">{d['article_count']} articles checked · {d['generated'][:16].replace('T',' ')}</div>
-<div class="intro">An AI support agent reads your help centre <b>one article at a time, with no memory between answers</b>.
+<div class="intro">An AI support agent reads your help center <b>one article at a time, with no memory between answers</b>.
 It can't scroll past intro text, click "see also", read a screenshot, or tell which article is current.
 This audit grades every article on the 13 things that decide whether the AI can answer from it, then can
 rewrite the ones you choose in your own voice. <b>A red mark is an issue worth fixing.</b> Hover anything for detail.</div>
 <div class="sharebar"><a class="sharebtn" href="scorecard.html" target="_blank">📊 Open shareable scorecard</a>
 <button class="sharebtn2" id="sharecopy" type="button">Copy score summary</button></div>
 <div class="cards">
- <div class="card"><div class="big {('gf' if d['overall_grade'][0] in 'DF' else '')}">{d['overall_grade']}</div><div class="lbl">Help centre grade · {d['overall_pct']}% AI-readiness score</div></div>
+ <div class="card"><div class="big {('gf' if d['overall_grade'][0] in 'DF' else '')}">{d['overall_grade']}</div><div class="lbl">Help center grade · {d['overall_pct']}% AI-readiness score</div></div>
  <div class="card alert"><div class="big">{needfix}</div><div class="lbl">Articles worth fixing</div></div>
  <div class="card"><div class="big">{d['article_count']-needfix}</div><div class="lbl">Already clean</div></div>
  <div class="card"><div class="big">{min(roll.items(),key=lambda kv:kv[1]['pass_pct'])[1]['pass_pct']}%</div><div class="lbl">Pass rate, weakest check</div></div>
 </div>
-<div class="sec"><h2>How your help centre scores, by question</h2>
+<div class="sec"><h2>How your help center scores, by question</h2>
 <p class="hint">The 12 checks group into three questions about every article. Bars show the share of articles that pass.</p>
 {blocks}</div>
 <div class="sec"><h2>Fix these first</h2>
@@ -579,7 +579,7 @@ rewrite the ones you choose in your own voice. <b>A red mark is an issue worth f
 <textarea id="housestyle" class="hsedit" rows="4" aria-label="House style">{esc(sp['descriptor'])}</textarea>
 <div class="hsrow"><button id="hsreset" class="hsbtn" type="button">Reset to derived</button><span id="hssaved" class="hssaved"></span>
 <span class="hsstats">{esc(style_stats)}</span></div></div>
-<div class="foot">Every fix works with any AI agent or helpdesk. Keeping a help centre AI-ready over time is what
+<div class="foot">Every fix works with any AI agent or helpdesk. Keeping a help center AI-ready over time is what
 <a href="https://myaskai.com" target="_blank">myAskAI</a> does automatically.</div>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -629,7 +629,7 @@ rewrite the ones you choose in your own voice. <b>A red mark is an issue worth f
   }});
 
   function buildPrompt(title,url){{
-    return 'Using the kb-ai-audit skill, optimise the '+KB+' help centre article "'+title+'" ('+url+') for AI-agent readiness: '
+    return 'Using the kb-ai-audit skill, optimize the '+KB+' help center article "'+title+'" ('+url+') for AI-agent readiness: '
       +'produce the complete, paste-ready rewrite, split it if it covers more than one question, carry over its original images and videos, '
       +'use ONLY facts present in the source article (never invent specs, steps, numbers, button names, URLs or policies — flag any gap with [VERIFY] instead of guessing), '
       +'add it (and any splits) to rewrites.json, then regenerate the dashboard and per-article pages. '
@@ -700,12 +700,12 @@ border:2px solid {('var(--red)' if gf else 'var(--line)')};display:flex;flex-dir
 </style></head><body>
 <div class="card">
   <div class="top"><span class="bubble"></span><span class="logo">my<span>AskAI</span></span>
-    <span class="kick">Help Centre AI-Readiness</span></div>
+    <span class="kick">Help Center AI-Readiness</span></div>
   <div class="mid">
     <div class="gradebox"><div class="grade">{esc(gradetop)}</div><div class="gradelbl">Overall grade</div></div>
     <div class="info">
       <h1 class="kbname">{esc(kb)}</h1>
-      <div class="subt">How ready this help centre is for an AI support agent to answer from</div>
+      <div class="subt">How ready this help center is for an AI support agent to answer from</div>
       <div class="stats">
         <div class="stat"><div class="v {('gf' if gf else '')}">{pct}%</div><div class="l">AI-readiness score</div></div>
         <div class="stat"><div class="v">{n}</div><div class="l">articles audited</div></div>
@@ -721,7 +721,7 @@ border:2px solid {('var(--red)' if gf else 'var(--line)')};display:flex;flex-dir
 
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("results")
-    ap.add_argument("--kb-name",default="Help Centre"); ap.add_argument("--outdir",default=".")
+    ap.add_argument("--kb-name",default="Help Center"); ap.add_argument("--outdir",default=".")
     ap.add_argument("--rewrites",default=None,
                     help="Optional rewrites.json (list of finished articles) to embed in the dashboard "
                          "with per-article Copy buttons.")

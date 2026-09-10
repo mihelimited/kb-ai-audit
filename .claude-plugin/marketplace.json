@@ -9,7 +9,7 @@
     {
       "name": "kb-ai-audit",
       "source": "./",
-      "description": "Audit a help center for AI customer-service readiness: 13 per-article checks A+–F, a help-centre-wide coherence layer (coverage gaps, contradictions, near-duplicates, freshness, confusable names), a branded dashboard, and on-request rewrites in the help center's own voice."
+      "description": "Audit a help center for AI customer-service readiness: 13 per-article checks A+–F, a help-center-wide coherence layer (coverage gaps, contradictions, near-duplicates, freshness, confusable names), a branded dashboard, and on-request rewrites in the help center's own voice."
     }
   ]
 }

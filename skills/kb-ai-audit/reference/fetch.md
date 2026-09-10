@@ -1,13 +1,13 @@
-# Getting the articles out of each help centre
+# Getting the articles out of each help center
 
-The auditor needs one file, `articles.json` — a list of articles, each normalised to:
+The auditor needs one file, `articles.json` — a list of articles, each normalized to:
 
 ```
 { "id", "title", "html_url", "body" (HTML), "updated_at", "section_id", "label_names": [], "vote_count" }
 ```
 
-`scripts/fetch_articles.py <help-centre-url>` does this automatically for all platforms — detect,
-fetch, normalise, write `articles.json`. This file documents what it does per platform and what to
+`scripts/fetch_articles.py <help-center-url>` does this automatically for all platforms — detect,
+fetch, normalize, write `articles.json`. This file documents what it does per platform and what to
 do by hand if the script can't run (e.g. no network in the current environment).
 
 **Detection order:** match the URL host first; if it's a custom domain, fetch the home page and look
@@ -33,7 +33,7 @@ crawling — the API gives clean article bodies with no nav/menu noise.
 ---
 
 ## 1. Zendesk  — fully automatic, no login
-The best case. The Help Center API is public for public help centres.
+The best case. The Help Center API is public for public help centers.
 
 - **List every article:** `GET https://{HELPDESK_HOST}/api/v2/help_center/{locale}/articles.json?per_page=100`
   - Works on `*.zendesk.com` and on custom domains (hit the same path on the live host).
@@ -46,7 +46,7 @@ The best case. The Help Center API is public for public help centres.
 - **With a token** (`INTERCOM_TOKEN` env var): `GET https://api.intercom.io/articles?per_page=250`,
   header `Authorization: Bearer <token>` and `Intercom-Version: 2.11`. Follow `pages.next`.
   Keep `state: published`; map `title`, `body` (HTML), `url`, `updated_at`, `parent_id` → section.
-- **No token:** Intercom help centres live on `*.intercom.help` (or a custom domain) with articles at
+- **No token:** Intercom help centers live on `*.intercom.help` (or a custom domain) with articles at
   `/{locale}/articles/{id}-slug` and a `/sitemap.xml`. The script crawls the sitemap and extracts the
   main article content. Command: `python3 scripts/fetch_articles.py https://help.example.com --platform intercom`
 

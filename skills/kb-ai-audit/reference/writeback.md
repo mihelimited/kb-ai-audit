@@ -74,5 +74,5 @@ paste each rewrite into the Gorgias Help Center editor.
 
 ## If anything is uncertain
 If you can't confirm the endpoint, scopes, or a safe draft state for a platform, **don't write** —
-deliver the Markdown pack instead and say why. A wrong write to a live help centre is far worse than
+deliver the Markdown pack instead and say why. A wrong write to a live help center is far worse than
 asking the user to paste.

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-kb_audit.py - Help-centre AI-readiness auditor (deterministic triage layer).
+kb_audit.py - Help-center AI-readiness auditor (deterministic triage layer).
 
 Scores every help article against 13 plain-language checks that decide whether an AI
 support agent can actually answer from it. All wording is written for a CS/CX leader -
 no technical jargon about how the AI works under the hood.
 
-Two help-centre-wide passes:
+Two help-center-wide passes:
   - conflicting-duplicates detection (CHK_DUP)
   - house style / tone-of-voice profile (feeds rewrites, never affects scoring)
 
@@ -238,8 +238,8 @@ CONTR_RE=re.compile(r"\b\w+'(s|re|ll|ve|t|d|m)\b",re.I)
 EMOJI_RE=re.compile("[\U0001F300-\U0001FAFF☀-➿✂-➰]")
 
 # ================= corpus-wide coherence layer =================
-# Five help-centre-wide passes that look BETWEEN and ACROSS articles (the 13 checks
-# only see one article at a time). Deterministic candidate-finders; the judgement-heavy
+# Five help-center-wide passes that look BETWEEN and ACROSS articles (the 13 checks
+# only see one article at a time). Deterministic candidate-finders; the judgment-heavy
 # ones (contradiction, collision, disambiguation) carry needs_confirm so the skill flow
 # can confirm them on the priority set before they're shown. Findings fold into the
 # existing per-article checks so they affect the grade:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-fetch_articles.py - pull a whole help centre into articles.json, for any platform.
+fetch_articles.py - pull a whole help center into articles.json, for any platform.
 
 Auto-detects the platform from the URL (or pass --platform), then uses the cleanest
 route available:
@@ -12,7 +12,7 @@ route available:
   Gorgias    -> crawl (no public article API)
   unknown    -> crawl (sitemap -> article pages -> main content)
 
-Every article is normalised to the schema kb_audit.py expects:
+Every article is normalized to the schema kb_audit.py expects:
   {id, title, html_url, body(html), updated_at, section_id, label_names, vote_count}
 
 Stdlib only. Needs normal network access (run in Claude Code or any local run).
@@ -218,7 +218,7 @@ class MainExtractor(HTMLParser):
 def _article_id(u):
     m=re.search(r"(\d{4,})", u.rstrip("/").rsplit("/",1)[-1]); return m.group(1) if m else u
 
-# ---- no-key embedded JSON: Next.js help centres (Intercom, Gorgias) ship the full article in
+# ---- no-key embedded JSON: Next.js help centers (Intercom, Gorgias) ship the full article in
 # __NEXT_DATA__, which is cleaner than scraping the rendered DOM. Use it when it's at least as
 # complete as the DOM crop.
 def _blocks_to_html(blocks):
@@ -258,7 +258,7 @@ def _txt_len(h): return len(re.sub(r"<[^>]+>"," ",h or "").split())
 
 def discover_urls(base, mx, locale=None):
     """Find article URLs from the sitemap. Filters to a single language (so multilingual help
-    centres aren't graded N times) and de-dupes by article id. Freshdesk's sitemap lives at
+    centers aren't graded N times) and de-dupes by article id. Freshdesk's sitemap lives at
     /support/sitemap.xml, not /sitemap.xml — both are tried."""
     raw=[]
     for sm in ["/sitemap.xml","/support/sitemap.xml","/sitemap_index.xml","/hc/sitemap.xml","/help/sitemap.xml"]:
