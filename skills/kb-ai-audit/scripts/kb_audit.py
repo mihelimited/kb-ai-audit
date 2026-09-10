@@ -176,8 +176,18 @@ def updated_age_days(v):
 ANSWER_RE=re.compile(r"\b(you can|you'?ll|you need|to (do|start|claim|change|enable|cancel|charge|pair|reset|fix|connect|"
  r"add|remove|update|create|delete|set|turn|check|find|use|install|upgrade|downgrade|contact)|"
  r"tap|press|go to|click|select|yes|no|download|open|first|head to|navigate|email|there is|there are|"
- r"we (do not|don'?t|can|cannot|can'?t) |it (is|isn'?t|does|doesn'?t) |\d)\b",re.I)
+ r"we (do not|don'?t|can|cannot|can'?t) |it (is|isn'?t|does|doesn'?t) |\d|"
+ # a stated limitation and a conditional are both answers: "HubSpot doesn't support AI Tagging",
+ # "If a ticket shows none of these signals, the agent didn't act on it"
+ r"\w+ (does not|doesn'?t|do not|don'?t|supports?|uses?|requires?|needs?|creates?|leaves?|writes?|sends?|replies|stays?) |"
+ r"if |when |once |there'?s )",re.I)
 PREAMBLE_RE=re.compile(r"^(at \w+|another year|we('re| are)? (happy|believe)|calling all|welcome|the \w+ app is|updating your)",re.I)
+
+# The scope line check 3 REQUIRES ("Applies to: …") is not a failure to answer first — without
+# this, satisfying "Says who and where it applies" broke "Answer first" on the same article.
+SCOPE_LINE_RE=re.compile(r"^\s*(applies to|available (on|in|to|for)|who (this|it)('s| is) for|this (article|guide|page) is for)\b",re.I)
+# Navigation sections are link lists, not content the AI answers from.
+NAVSEC_RE=re.compile(r"^\s*(related|see also|further reading|next steps?|more (help|info)|other (articles|playbooks))",re.I)
 
 def split_sections(b):
     """The article as an AI agent meets it: each h2/h3 section, plus whatever precedes the first one.
@@ -195,9 +205,10 @@ def split_sections(b):
     return out
 
 def leads_with_answer(chunk):
-    ps=get_paragraphs(chunk)
+    ps=[x for x in get_paragraphs(chunk) if not SCOPE_LINE_RE.match(x)]
     lead=(ps[0] if ps else strip_tags(chunk))[:260]
     if not lead.strip(): return True                    # a pure list/table section leads with content
+    if PREAMBLE_RE.search(lead.strip()): return False    # brand/intro copy is never the answer
     return bool(ANSWER_RE.search(lead))
 
 def first_block(b,n=260):
@@ -245,7 +256,7 @@ def check_article(a):
                          else "Mentions a device/plan/region, but no 'who this is for' line near the top.")
 
     # 4 Answer first + stands alone — judged per SECTION, because that is the unit the AI reads
-    secs=split_sections(body) or [("",body)]
+    secs=[(h,c) for h,c in (split_sections(body) or [("",body)]) if not NAVSEC_RE.match(h or "")] or [("",body)]
     weak=[h for h,c in secs if not leads_with_answer(c)]
     ok_ratio=1-(len(weak)/max(1,len(secs)))
     brandy=bool(PREAMBLE_RE.search(intro.strip()))
