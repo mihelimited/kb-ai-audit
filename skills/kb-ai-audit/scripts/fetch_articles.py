@@ -61,8 +61,12 @@ def detect_platform(url):
         if "x-hs-portal-id" in hdrs or "x-hs-hub-id" in hdrs or 'content="hubspot"' in bl: return "hubspot"
         if "x-intercom-version" in hdrs or "intercom.help" in bl: return "intercom"
         # Freshdesk: x-fw-ratelimiting-managed / freshedge.net in report-to/nel, or /support/ paths
+        # NB: match infrastructure fingerprints, never a bare vendor name in the page text. Help
+        # centers in the customer-support space list these platforms as integrations — this one's
+        # own docs name Freshdesk, Zendesk, Intercom and HubSpot dozens of times — so a bare
+        # "freshdesk" in the body identified half the internet as Freshdesk.
         if "x-fw-ratelimiting-managed" in hdrs or "freshedge.net" in (hdrs.get("report-to","")+hdrs.get("nel","")) \
-           or "fw-content--single-article" in bl or "freshdesk" in bl or "freshworks" in bl: return "freshdesk"
+           or "fw-content--single-article" in bl or "freshworks.com/crm" in bl or ".freshdesk.com" in bl: return "freshdesk"
         # Gorgias: its robots.txt template references the help-centers loader; pages carry ghc- classes
         if "ghc-app" in bl or "gorgiaschat" in bl.replace(" ",""):
             return "gorgias"
@@ -70,7 +74,9 @@ def detect_platform(url):
             rb=get(base+"/robots.txt").lower()
             if "help-centers/loader.js" in rb: return "gorgias"
         except Exception: pass
-        for key,plat in [("zendesk","zendesk"),("gorgias","gorgias")]:
+        # Domain-anchored only, for the same reason as above: a KB that documents an integration
+        # with Zendesk or Gorgias is not itself hosted on one.
+        for key,plat in [(".zendesk.com","zendesk"),("zdassets.com","zendesk"),("gorgias.help","gorgias")]:
             if key in bl: return plat
         try:
             get(base+"/api/v2/help_center/en-us/articles.json?per_page=1"); return "zendesk"
@@ -260,7 +266,7 @@ def discover_urls(base, mx, locale=None):
     """Find article URLs from the sitemap. Filters to a single language (so multilingual help
     centers aren't graded N times) and de-dupes by article id. Freshdesk's sitemap lives at
     /support/sitemap.xml, not /sitemap.xml — both are tried."""
-    raw=[]
+    raw=[]; plain=[]
     for sm in ["/sitemap.xml","/support/sitemap.xml","/sitemap_index.xml","/hc/sitemap.xml","/help/sitemap.xml"]:
         try: xml=get(base+sm)
         except Exception: continue
@@ -271,9 +277,16 @@ def discover_urls(base, mx, locale=None):
                 except Exception: pass
         for l in locs:
             l=l.strip()
+            if l.endswith(".xml") or not l.startswith(base): continue
             if NONARTICLE.search(l): continue
             if ARTICLE_HINT.search(l) or GORGIAS_HINT.search(l): raw.append(l)
-        if raw: break
+            elif l.rstrip("/")!=base.rstrip("/"): plain.append(l)
+        if raw or plain: break
+    # Modern docs platforms (Mintlify, GitBook, Docusaurus, Nextra, ReadMe) publish clean topical
+    # paths — /account-management/billing/refunds — with no /articles/ or /hc/ segment, so the
+    # legacy URL shapes match nothing and the crawl used to return zero. A sitemap IS the page
+    # list, so when it yields pages and none look "legacy", take the sitemap at its word.
+    if not raw and plain: raw=plain
     # language filter: keep only /<lang>/ or /<lang-XX>/ URLs when a locale is requested and present
     lang=(locale or "").split("-")[0].lower()
     if lang:
