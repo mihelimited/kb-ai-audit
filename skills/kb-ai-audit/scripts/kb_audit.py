@@ -332,6 +332,18 @@ def _fold(check,note):
 ANTONYMS=[("send","receive"),("buy","sell"),("deposit","withdraw"),("deposit","withdrawal"),
  ("add","remove"),("enable","disable"),("open","close"),("create","delete"),("import","export"),
  ("lock","unlock"),("connect","disconnect"),("activate","deactivate"),("start","stop"),("login","logout")]
+def _complementary_titles(ta,tb):
+    """Same doc written per platform/product — "Freshdesk (Tagging)" vs "Zendesk (Tagging)".
+
+    These score as near-duplicates because they share a template, but they answer different
+    customer questions and merging them would be wrong. If each title carries a proper-noun the
+    other lacks, they are parallel docs, not rivals for the same query.
+    """
+    def named(t):
+        return {w.lower() for w in re.findall(r"\b[A-Z][A-Za-z0-9]{2,}\b",t) if w.lower() not in STOP}
+    na,nb=named(ta),named(tb)
+    return bool(na-nb) and bool(nb-na)
+
 def corpus_collisions(results,vecs,thresh=0.7,cap=15):
     """Paraphrased near-duplicate articles competing for the same query (distinct from the literal CHK_DUP pass).
     Requires both high body overlap AND similar titles, and skips complementary (send/receive-style) pairs."""
@@ -344,6 +356,7 @@ def corpus_collisions(results,vecs,thresh=0.7,cap=15):
             tr=difflib.SequenceMatcher(None,results[i]["title"].lower(),results[j]["title"].lower()).ratio()
             if tr<0.55: continue  # near-dups share a title shape; complementary how-tos don't
             if any((x in tl[i] and y in tl[j]) or (y in tl[i] and x in tl[j]) for x,y in ANTONYMS): continue
+            if _complementary_titles(results[i]["title"],results[j]["title"]): continue
             shared=sorted(set(vecs[i])&set(vecs[j]),key=lambda w:-(vecs[i][w]+vecs[j][w]))[:6]
             pairs.append({"a":results[i]["title"],"b":results[j]["title"],"ai":i,"bi":j,
                           "a_url":results[i].get("url"),"b_url":results[j].get("url"),
@@ -364,15 +377,31 @@ PCT_RE=re.compile(r"(\d+(?:\.\d+)?)\s?%")
 def _unit_key(u):
     u=u.lower().rstrip('s')
     return {"hr":"hour","business day":"day","metre":"meter","meter":"meter","ft":"feet","foot":"feet"}.get(u,u)
+SUBJ_MAX_GAP=30   # chars between the subject word and the number before the link is guesswork
+def _bind_subject(text,m,pre=60,post=25):
+    """The subject NEAREST the number, and only if it is genuinely adjacent to it.
+
+    Taking the first subject anywhere in a 60-char lookbehind invents contradictions: in
+    "signing up for a trial and after having connected your helpdesk, within 7 days …" it bound
+    'trial' to 7 and reported a 7-day trial contradicting a 30-day one elsewhere.
+    """
+    lo=max(0,m.start()-pre); ctx=text[lo:m.end()+post]
+    nlo=m.start()-lo; nhi=nlo+(m.end()-m.start()); best=None
+    for s in SUBJ_RE.finditer(ctx):
+        gap=(nlo-s.end()) if s.end()<=nlo else ((s.start()-nhi) if s.start()>=nhi else 0)
+        if gap<0: gap=0
+        if gap<=SUBJ_MAX_GAP and (best is None or gap<best[0]): best=(gap,s.group(1))
+    return best[1] if best else None
+
 def _quant_facts(text):
     out={}
     for m in UNIT_RE.finditer(text):
-        ctx=text[max(0,m.start()-60):m.end()+25]; s=SUBJ_RE.search(ctx)
-        if s: out.setdefault((s.group(1).lower().rstrip('s'),_unit_key(m.group(2))),set()).add(m.group(1))
+        subj=_bind_subject(text,m)
+        if subj: out.setdefault((subj.lower().rstrip('s'),_unit_key(m.group(2))),set()).add(m.group(1))
     for rx,unit in ((MONEY_RE,"money"),(PCT_RE,"percent")):
         for m in rx.finditer(text):
-            ctx=text[max(0,m.start()-60):m.end()+25]; s=SUBJ_RE.search(ctx)
-            if s: out.setdefault((s.group(1).lower().rstrip('s'),unit),set()).add(m.group(1))
+            subj=_bind_subject(text,m)
+            if subj: out.setdefault((subj.lower().rstrip('s'),unit),set()).add(m.group(1))
     return out
 
 def corpus_contradictions(results,vecs,topic_thresh=0.18):
@@ -399,22 +428,42 @@ def corpus_contradictions(results,vecs,topic_thresh=0.18):
 
 SUFFIX="2|3|4|II|III|IV|Pro|Plus|Lite|Max|Mini|Premium|Air|SE|Ultra|XL|v\\d+"
 # structural / generic words that take a number but are NOT product names
-NAME_STOP=set(("step steps scenario example part option phase method figure note section chapter "
+NAME_STOP=set(("rule path scale list group set batch block term band slot entry choice "
+ "step steps scenario example part option phase method figure note section chapter "
  "question point stage round version tier level day week item case image photo table tip way reason "
  "factor type form field box page line row column option phase tab menu screen window page google "
  "method appendix attachment exhibit").split())
+def _generic_name(base):
+    """True when the 'name' is really a structural word — so it is not a confusable product name.
+
+    Checks every token and its singular form: NAME_STOP listed "day" but not "days", and a
+    two-word base like "DPA Part" slipped past entirely because only the whole string was tested.
+    """
+    toks=[t for t in re.split(r"\s+",base.lower()) if t]
+    if not toks: return True
+    if base.lower() in STOP or base.lower() in NAME_STOP: return True
+    return any(t in STOP or t in NAME_STOP or t.rstrip("s") in NAME_STOP for t in toks)
+
 def corpus_disambiguation(results):
     """Confusable product / plan / feature names the KB never explicitly tells apart — chiefly a base
     name that also appears with a version/model suffix (the 'v1 vs v2' trap), plus near-identical names.
     The (?![\\w-]) guard rejects '2-Step'/'2FA'-style numbers that aren't real version suffixes."""
     variant=re.compile(r"\b([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?)\s+("+SUFFIX+r")(?![\w-])")
     base_variants=collections.defaultdict(set); seen=collections.Counter()
+    midsentence=set()   # bases seen capitalized mid-sentence — i.e. actually proper nouns
     for r in results:
         hay=r["title"]+". "+r["_text"]
         for m in variant.finditer(hay):
-            base=re.sub(r"^(the|your|a|an)\s+","",m.group(1).strip(),flags=re.I)
-            if base.lower() in STOP or base.lower() in NAME_STOP or len(base)<4: continue
+            raw=m.group(1).strip()
+            base=re.sub(r"^(the|your|a|an)\s+","",raw,flags=re.I)
+            if _generic_name(base) or len(base)<4: continue
+            # "Provide 2 examples" / "Scale 2 accounts" — a capitalized sentence-opening verb is not a
+            # product name. Only trust a base that also appears capitalized inside a sentence. A
+            # leading determiner ("Your Nimbus 2") means the name itself is mid-sentence by definition.
+            pre=hay[max(0,m.start()-2):m.start()]
+            if base!=raw or not re.search(r"(^|[.!?:;\n]\s*)$",pre): midsentence.add(base)
             base_variants[base].add(base+" "+m.group(2)); seen[base]+=1
+    for b in [b for b in base_variants if b not in midsentence]: del base_variants[b]
     groups=[]
     for base,vars_ in base_variants.items():
         # confusable only if the bare base also appears on its own somewhere (so both v1 and v2 are in the KB)
