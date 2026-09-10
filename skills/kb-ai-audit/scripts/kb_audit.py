@@ -136,7 +136,22 @@ QUOTED_RE=re.compile(r"[\"“‘']([A-Za-z][^\"”’']{3,40})[\"”’']")
 DATE_RE=re.compile(r"\b(20[12]\d)\b")
 SINCE_DATE_RE=re.compile(r"since\s+\w*\s*20[12]\d",re.I)
 ACRO_RE=re.compile(r"\b([A-Z]{2,6}(?:s)?)\b")
-ACRO_STOP={"FAQ","FAQS","US","UK","EU","PST","PDT","PT","AM","PM","HD","QR","OS","ID","DM","DMS","URL","API","TOC","NOTE","Q","A","SKU","SKUS","USB","LED","AI","II","TV","X","BUDDY","OK","PDF"}
+# Never flag: ordinary English words that appear in caps (headings, emphasis, boolean examples),
+# and acronyms a general audience already knows. "AND", "OR", "IF" and "IT" were being reported as
+# in-house jargon needing a definition.
+ACRO_STOP={"FAQ","FAQS","US","UK","EU","PST","PDT","PT","AM","PM","HD","QR","OS","ID","DM","DMS",
+ "URL","API","APIS","TOC","NOTE","Q","A","SKU","SKUS","USB","LED","AI","II","TV","X","OK","PDF",
+ # English words that show up capitalized
+ "AND","OR","IF","IT","NOT","ALL","NEW","YES","NO","THE","FOR","YOU","CAN","ADD","SET","GET","USE",
+ "SEE","HOW","WHY","WHO","ONE","TWO","END","TOP","OFF","ON","IN","OUT","UP","TO","BY","AS","AT","IS",
+ "BE","DO","GO","WE","MY","AN","VS","VIA","PER","PRO","MAX","MIN","TIP","KEY","WAY","DAY","NAME",
+ # formats, protocols and web basics
+ "CSV","JSON","XML","HTML","CSS","JS","SQL","HTTP","HTTPS","REST","SMS","IP","URI","UTF","ZIP","PNG",
+ "JPG","GIF","SVG","MP4","RSS","DNS","SSL","TLS","CDN","UI","UX","OS","POST","PUT","PATCH","DELETE",
+ # widely-known business/tech acronyms
+ "AWS","GCP","SSO","SAML","CRM","SLA","B2B","B2C","SAAS","CEO","CTO","VAT","PDF","GDPR","CCPA","EULA",
+ # logic / query keywords that appear in rule and formula examples written as prose
+ "ELSE","THEN","WHEN","TRUE","FALSE","NULL","CREATE","SELECT","WHERE","FROM","JOIN","ORDER"}
 DEP_RE=re.compile(r"\b(no longer supported|deprecated|retired|expired|discontinued|sunset|legacy)\b",re.I)
 # Genuinely time-bound content only. "version", "update" and "cost" appear in a huge share of
 # ordinary articles ("update the app", "at no cost"), which made nearly everything time-sensitive
@@ -252,8 +267,15 @@ def check_article(a):
     res[CHK_FULL]=R("Fix" if n5 else "Pass","Contains "+"; ".join(n5) if n5 else "Answer is written out in full.")
 
     # 6 Acronyms
-    undef=[ac for ac in set(ACRO_RE.findall(text)) if ac.upper() not in ACRO_STOP
-           and not re.search(r"\([^)]*\b"+re.escape(ac)+r"\b[^)]*\)",text) and not re.search(re.escape(ac)+r"\s*\([A-Za-z]",text)]
+    # Code and preformatted blocks are not prose: SQL/formula keywords (CREATE, ELSE, TRUE, FLAG)
+    # were being reported as in-house jargon the article must define. Plurals ("CSVs") resolve to
+    # their singular before the stop-list check.
+    prose=strip_tags(re.sub(r"<(code|pre|kbd|samp)[^>]*>.*?</\1>"," ",body,flags=re.S|re.I))
+    def _known(ac):
+        u=ac.upper()
+        return u in ACRO_STOP or (u.endswith("S") and u[:-1] in ACRO_STOP)
+    undef=[ac for ac in set(ACRO_RE.findall(prose)) if not _known(ac)
+           and not re.search(r"\([^)]*\b"+re.escape(ac)+r"\b[^)]*\)",prose) and not re.search(re.escape(ac)+r"\s*\([A-Za-z]",prose)]
     res[CHK_JARG]=R("Fix" if undef else "Pass",("Used but never explained: "+", ".join(sorted(undef)[:5])) if undef else "Acronyms explained on first use.",llm=True)
 
     # 7 Cases together
